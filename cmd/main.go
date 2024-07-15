@@ -2,61 +2,99 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/spf13/viper"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"sync"
 )
 
 func main() {
-	// Setup Viper
-	viper.SetConfigName("config")  // name of config file (without extension)
-	viper.SetConfigType("yaml")    // YAML format
-	viper.AddConfigPath("config/") // look for config in the config directory
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	err := viper.ReadInConfig()
+	go func() {
+
+		defer wg.Done()
+		for {
+			PocHttpServer()
+		}
+
+	}()
+
+	go func() {
+
+		defer wg.Done()
+		for {
+			SimpleProxyServer()
+		}
+	}()
+
+	wg.Wait()
+
+}
+
+func PocHttpServer() {
+
+	listenPort := "0.0.0.0:1080"
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Get the full request URL
+		requestURL := r.URL.String()
+		fmt.Fprintf(w, "Simple Http Server %v\n %v\n", requestURL, r.URL.Port())
+	}
+
+	http.HandleFunc("/", handler)
+
+	fmt.Println("Starting server on 0.0.0.1080")
+	err := http.ListenAndServe(listenPort, nil)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func SimpleProxyServer() {
+	var target = "http://0.0.0.0:1080"
+	// var inUrl = "http://0.0.0.0:1080"
+	targetUrl, err := url.Parse(target)
 	if err != nil {
 		panic(err)
 	}
 
-	keys := viper.AllKeys()
-	for _, key := range keys {
-		fmt.Println(key)
+	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
+
+	fmt.Println("Starting proxy server on 0.0.0.0:82")
+	err = http.ListenAndServe(":82", proxy)
+	if err != nil {
+		panic(err)
 	}
+}
 
-	fmt.Printf("viper.Get(\"routes\"): %v\n", viper.Get("routes"))
-	fmt.Printf("viper.ConfigFileUsed(): %v\n", viper.ConfigFileUsed())
-	fmt.Printf("viper.AllSettings(): %v\n", viper.AllSettings())
+func ProxyMain() {
 
-	config := &Config{}
-
-	err = viper.Unmarshal(config)
+	var target = "http://0.0.0.0:6443"
+	targetUrl, err := url.Parse(target)
 	if err != nil {
 		panic(err)
 	}
 
-	s := config.Routes[0]
-	fmt.Printf("s.Name: %v\n", s.Name)
-	fmt.Printf("s.ListenPort: %v\n", s.ListenPort)
+	// var inUrl = "http://0.0.0.0:1080"
 
-	t := s.Targets[0]
-	fmt.Printf("t.Name: %v\n", t.Name)
-	fmt.Printf("t.Protocol: %v\n", t.Protocol)
+	// listenUrl, err := url.Parse(inUrl)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(targetUrl)
 
-}
+		},
+	}
 
-type Config struct {
-	Routes []Route `yaml:"routes"`
-}
-type Route struct {
-	Name          string   `yaml:"name omitempty=false"`
-	ListenPort    int      `yaml:"listen_port omitempty=false"`
-	Protocol      string   `yaml:"protocol omitempty=false"`
-	ProxyProtocol string   `yaml:"proxy_protocol omitempty=false"`
-	Targets       []Target `yaml:"targets omitempty=false"`
-}
+	err = http.ListenAndServe(":82", proxy)
+	if err != nil {
+		panic(err)
+	}
 
-type Target struct {
-	Name     string `yaml:"name omitempty=false"`
-	Protocol string `yaml:"protocol omitempty=false"`
-	Host     string `yaml:"host omitempty=false"`
-	Port     int    `yaml:"port omitempty=false"`
+	fmt.Println("Server listeting")
+
 }
