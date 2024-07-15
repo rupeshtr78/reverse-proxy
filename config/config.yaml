@@ -2,7 +2,6 @@ routes:
   - name: "grafana"
     listenport: 3000
     protocol: "http"
-    proxyprotocol: "http"
     target:
         name: "grafana-local"
         protocol: "http"

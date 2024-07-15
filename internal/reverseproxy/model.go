@@ -21,11 +21,10 @@ type Config struct {
 	Routes []Route `yaml:"routes"`
 }
 type Route struct {
-	Name          string `yaml:"name omitempty=false"`
-	ListenPort    int    `yaml:"listenport omitempty=false"`
-	Protocol      string `yaml:"protocol omitempty=false"`
-	ProxyProtocol string `yaml:"proxyprotocol omitempty=false"`
-	Target        Target `yaml:"target omitempty=false"`
+	Name       string `yaml:"name omitempty=false"`
+	ListenPort int    `yaml:"listenport omitempty=false"`
+	Protocol   string `yaml:"protocol omitempty=false"`
+	Target     Target `yaml:"target omitempty=false"`
 }
 
 type Target struct {
@@ -65,4 +64,11 @@ func GetTargetURL(target Target) (*url.URL, error) {
 		return nil, err
 	}
 	return targetUrl, nil
+}
+
+func NewServeMux(route *Route, handler http.Handler) (*http.ServeMux, error) {
+	mux := http.NewServeMux()
+	mux.Handle("/", handler)
+	return mux, nil
+
 }

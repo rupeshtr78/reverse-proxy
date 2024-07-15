@@ -41,10 +41,15 @@ func main() {
 		log.Error("Error creating proxy", err, route1.Name)
 	}
 
-	http.Handle("/", proxy)
+	// http.Handle("/", proxy) // testing
 
-	log.Info("Staring Porxy Server on port %s\n", config.Routes[0].ListenPort)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", config.Routes[0].ListenPort), nil)
+	mux, err := reverseproxy.NewServeMux(&route1, proxy)
+	if err != nil {
+		log.Error("Error creating mux", err)
+	}
+
+	log.Info("Staring Porxy Server on port %s\n", route1.ListenPort)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", route1.ListenPort), mux)
 
 	if err != nil {
 		log.Error("Error starting proxy server")
