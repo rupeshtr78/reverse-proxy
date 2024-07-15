@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"sync"
 )
 
@@ -22,10 +23,10 @@ func main() {
 	}()
 
 	go func() {
-
 		defer wg.Done()
 		for {
-			SimpleProxyServer()
+			// SimpleProxyServer()
+			ProxyMain()
 		}
 	}()
 
@@ -71,25 +72,24 @@ func SimpleProxyServer() {
 
 func ProxyMain() {
 
-	var target = "http://0.0.0.0:6443"
+	var target = "http://0.0.0.0:1080"
 	targetUrl, err := url.Parse(target)
 	if err != nil {
 		panic(err)
 	}
 
-	// var inUrl = "http://0.0.0.0:1080"
-
-	// listenUrl, err := url.Parse(inUrl)
-	// if err != nil {
-	// 	panic(err)
-	// }
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
 			r.SetURL(targetUrl)
-
+		},
+		ModifyResponse: func(r *http.Response) error {
+			r.Header.Set("Routed-To", targetUrl.String())
+			r.Header.Write(os.Stdout)
+			return nil
 		},
 	}
 
+	fmt.Println("Starting proxy server listening on 82")
 	err = http.ListenAndServe(":82", proxy)
 	if err != nil {
 		panic(err)
