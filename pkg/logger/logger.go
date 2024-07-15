@@ -46,7 +46,7 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	// Append provided arguments as attributes
 	// attrs = append(attrs,)
 	for _, v := range args {
-		attrs = append(attrs, slog.Any("Err", v))
+		attrs = append(attrs, slog.Any("args", v))
 	}
 
 	l.Logger.LogAttrs(ctx, level, msg, attrs...)
@@ -87,4 +87,9 @@ func (l *Logger) Warn(msg string, args ...any) {
 
 func (l *Logger) Error(msg string, args ...any) {
 	l.log(slog.LevelError, msg, args...)
+}
+
+func (l *Logger) Fatal(msg string, args ...any) {
+	l.log(slog.LevelError, msg, args...)
+	os.Exit(1)
 }

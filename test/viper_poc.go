@@ -13,9 +13,9 @@ func ViperPoc() {
 	logger := logger.NewLogger(os.Stdout, "viper-poc", slog.LevelInfo)
 
 	// Setup Viper
-	viper.SetConfigName("config")   // name of config file (without extension)
-	viper.SetConfigType("yaml")     // YAML format
-	viper.AddConfigPath("configs/") // look for config in the config directory
+	viper.SetConfigName("config")  // name of config file (without extension)
+	viper.SetConfigType("yaml")    // YAML format
+	viper.AddConfigPath("config/") // look for config in the config directory
 
 	err := viper.ReadInConfig()
 	if err != nil {
