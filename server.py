@@ -1,7 +1,5 @@
 import streamlit as st
 import yaml
-from hello import hello
-
 def load_config():
     try:
         with open('config.yaml', 'r') as file:
