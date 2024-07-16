@@ -46,7 +46,7 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	// Append provided arguments as attributes
 	// attrs = append(attrs,)
 	for _, v := range args {
-		attrs = append(attrs, slog.Any("args", v))
+		attrs = append(attrs, slog.Any("attrs", v))
 	}
 
 	l.Logger.LogAttrs(ctx, level, msg, attrs...)

@@ -1,5 +1,7 @@
 package reverseproxy
 
+// Config represents the configuration for the reverse proxy.
+// The Routes field contains a list of Route configurations.
 type Config struct {
 	Routes []Route `yaml:"routes"`
 }
@@ -15,4 +17,6 @@ type Target struct {
 	Protocol string `yaml:"protocol omitempty=false"`
 	Host     string `yaml:"host omitempty=false"`
 	Port     int    `yaml:"port omitempty=false"`
+	CertFile string `yaml:"certfile omitempty=false"`
+	KeyFile  string `yaml:"keyfile omitempty=false"`
 }
