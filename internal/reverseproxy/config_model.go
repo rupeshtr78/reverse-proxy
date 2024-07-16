@@ -1,13 +1,5 @@
 package reverseproxy
 
-import (
-	"log/slog"
-	"os"
-	"reverseproxy/pkg/logger"
-)
-
-var log = logger.NewLogger(os.Stdout, "reverseproxy", slog.LevelDebug)
-
 type Config struct {
 	Routes []Route `yaml:"routes"`
 }

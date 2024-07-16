@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
+	"reverseproxy/api"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
+	"sync"
 
 	"github.com/spf13/viper"
 )
@@ -34,24 +34,23 @@ func main() {
 
 	routes := config.Routes
 	// add go routine for each route
-	route1 := routes[0] // for testing //TODO remove
 
-	proxy, err := reverseproxy.NewReverseProxy(&route1)
-	if err != nil {
-		log.Error("Error creating proxy", err, route1.Name)
+	var wg sync.WaitGroup
+	wg.Add(len(routes))
+	errChan := make(chan error, len(routes))
+	defer close(errChan)
+
+	for _, route := range routes {
+		go func() {
+			err := api.ProxyServer(&route)
+			errChan <- err
+
+		}()
+
 	}
 
-	// http.Handle("/", proxy) // testing
-
-	mux, err := reverseproxy.NewServeMux(&route1, proxy)
-	if err != nil {
-		log.Error("Error creating mux", err)
+	for i := 0; i < len(routes); i++ {
+		log.Error("Error in proxy server", <-errChan)
 	}
 
-	log.Info("Staring Porxy Server on port %s\n", route1.ListenPort)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", route1.ListenPort), mux)
-
-	if err != nil {
-		log.Error("Error starting proxy server")
-	}
 }
