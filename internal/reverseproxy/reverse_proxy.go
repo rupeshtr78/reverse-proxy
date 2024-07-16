@@ -42,6 +42,13 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 			req.URL.Path = url.Path + req.URL.Path // adds proxy path plus request url path
 			log.Debug("Request proxied to", req.URL.Host, req.URL.Path)
 		},
+		// Modify the reverse proxy to add the CORS headers:
+		ModifyResponse: func(resp *http.Response) error {
+			resp.Header.Set("Access-Control-Allow-Origin", "*")
+			resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			return nil
+		},
 	}
 	reverseProxy := &ReverseProxy{
 		Route: route,
@@ -78,5 +85,19 @@ func NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 	return mux, nil
+
+}
+
+func HandleCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 
 }

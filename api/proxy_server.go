@@ -33,7 +33,7 @@ func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 	}
 
 	log.Info("Proxy Server created for route %s", route.Name)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", route.ListenPort), mux)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", route.ListenPort), reverseproxy.HandleCORS(mux))
 
 	if err != nil {
 		log.Error("Error starting proxy server")
