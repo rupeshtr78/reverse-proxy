@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"reverseproxy/api"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
-	"sync"
 
 	"github.com/spf13/viper"
 )
@@ -35,14 +35,17 @@ func main() {
 	routes := config.Routes
 	// add go routine for each route
 
-	var wg sync.WaitGroup
-	wg.Add(len(routes))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// var wg sync.WaitGroup
+	// wg.Add(len(routes))
 	errChan := make(chan error, len(routes))
 	defer close(errChan)
 
 	for _, route := range routes {
 		go func() {
-			err := api.ProxyServer(&route)
+			err := api.ProxyServer(ctx, &route)
 			errChan <- err
 
 		}()

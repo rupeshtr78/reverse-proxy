@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,8 +17,8 @@ var log = logger.NewLogger(os.Stdout, "proxy_server", slog.LevelDebug)
 // and then creates a new ServeMux to handle the routing for the proxy.
 // The server is then started and listens on the specified port.
 // If any errors occur during the setup or startup, they are logged and returned.
-func ProxyServer(route *reverseproxy.Route) error {
-	proxy, err := reverseproxy.NewReverseProxy(route)
+func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
+	proxy, err := reverseproxy.NewReverseProxy(ctx, route)
 	if err != nil {
 		log.Error("Error creating proxy", err, route.Name)
 		return err
@@ -25,13 +26,13 @@ func ProxyServer(route *reverseproxy.Route) error {
 
 	// http.Handle("/", proxy) // testing
 
-	mux, err := reverseproxy.NewServeMux(route, proxy)
+	mux, err := reverseproxy.NewServeMux(ctx, route, proxy)
 	if err != nil {
 		log.Error("Error creating mux", err)
 		return err
 	}
 
-	log.Info("Staring Porxy Server on port %s\n", route.ListenPort)
+	log.Info("Proxy Server created for route %s", route.Name)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", route.ListenPort), mux)
 
 	if err != nil {

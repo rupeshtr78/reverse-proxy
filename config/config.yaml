@@ -1,6 +1,6 @@
 routes:
   - name: "grafana"
-    listenport: 3000
+    listenport: 3009
     protocol: "http"
     target:
         name: "grafana-local"

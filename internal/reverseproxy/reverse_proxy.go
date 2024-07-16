@@ -1,6 +1,7 @@
 package reverseproxy
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -21,7 +22,7 @@ type ReverseProxy struct {
 // NewReverseProxy creates a new ReverseProxy instance that can be used to proxy HTTP requests to a target URL.
 // The ReverseProxy is configured with the provided Route, which contains information about the target URL.
 // If there is an error parsing the target URL, an error is returned.
-func NewReverseProxy(route *Route) (*ReverseProxy, error) {
+func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 
 	target := route.Target
 	url, err := getTargetURL(target)
@@ -35,10 +36,11 @@ func NewReverseProxy(route *Route) (*ReverseProxy, error) {
 	// Setup the reverse proxy
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
+			req = req.WithContext(ctx)
 			req.URL.Scheme = url.Scheme
 			req.URL.Host = url.Host
 			req.URL.Path = url.Path + req.URL.Path // adds proxy path plus request url path
-			log.Debug("Url path", req.URL.Path)
+			log.Debug("Request proxied to", req.URL.Host, req.URL.Path)
 		},
 	}
 	reverseProxy := &ReverseProxy{
@@ -53,7 +55,9 @@ func NewReverseProxy(route *Route) (*ReverseProxy, error) {
 // It sets the "X-Forwarded-Host" header on the incoming request and then passes the request to the underlying ReverseProxy's ServeHTTP method.
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	p.Proxy.ServeHTTP(w, r)
+	// X-Forwarded-For or X-Forwarded-Proto
+	ctx := r.Context()
+	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
 }
 
 // getTargetURL parses the provided Target struct into a URL that can be used by the reverse proxy.
@@ -70,7 +74,7 @@ func getTargetURL(target Target) (*url.URL, error) {
 // NewServeMux creates a new HTTP request multiplexer (ServeMux) that will route incoming requests to the provided handler.
 // The mux is configured to handle all requests to the root path ("/") and forward them to the provided handler.
 // If there is an error creating the mux, an error is returned.
-func NewServeMux(route *Route, handler http.Handler) (*http.ServeMux, error) {
+func NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.Handle("/", handler)
 	return mux, nil
