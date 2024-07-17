@@ -68,7 +68,7 @@ USER $USER_NAME
 COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserver
 
 
-EXPOSE ${PORT}
+EXPOSE 1000-65535
 
 
 CMD ["/app/proxyserver"]

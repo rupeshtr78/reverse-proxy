@@ -1,0 +1,21 @@
+services:
+  proxyserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "6445:6445"
+      - "3010:3000"
+    environment:
+      CONFIG_FILE: "/config/config.yaml"
+      LOG_LEVEL: "info"
+      LOG_FILE_PATH: "/logs/proxy.log"
+    volumes:
+      - ./config:/config
+      - ./logs:/logs
+    networks:
+      - proxy_network
+
+networks:
+  proxy_network:
+    driver: bridge
