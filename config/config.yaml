@@ -9,7 +9,7 @@ routes:
     target:
         name: "grafana-p920s"
         protocol: "http"
-        host: "192.168.2.130"
-        port: 6443
+        host: "10.0.1.213"
+        port: 3000
         certfile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.crt"
         keyfile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.key"

@@ -20,7 +20,7 @@ func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 		return err
 	}
 
-	// http.Handle("/", proxy) // testing
+	// checkUrl := proxy.CheckTarget(ctx, proxy)
 
 	mux, err := proxy.NewServeMux(ctx, route, proxy)
 	if err != nil {

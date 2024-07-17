@@ -6,20 +6,21 @@ import (
 	"crypto/x509"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"reverseproxy/pkg/logger"
+	"time"
 )
 
 var log = logger.NewLogger(os.Stdout, "reverseproxy", slog.LevelDebug)
 
 // ReverseProxy is a struct that holds a Route and a Proxy. It is used to proxy HTTP requests to a target URL.
 type ReverseProxy struct {
-	Route  *Route
-	Proxy  *httputil.ReverseProxy
-	Client *http.Client
+	Route *Route
+	Proxy *httputil.ReverseProxy
 }
 
 // NewReverseProxy creates a new ReverseProxy instance that can be used to proxy HTTP requests to a target URL.
@@ -34,12 +35,26 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 		return nil, err
 	}
 
-	// Check if protocol is HTTPS and set up TLS configuration
-	transport, err := getTlsTransport(target)
-	if err != nil {
-		log.Error("Error setting up TLS configuration", err)
-		return nil, err
+	transport := &http.Transport{
+		MaxIdleConns:          10,
+		ResponseHeaderTimeout: 30 * time.Microsecond,
+		IdleConnTimeout:       30 * time.Microsecond,
 	}
+
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,  // Timeout for establishing connection
+		KeepAlive: 10 * time.Second, // Keep alive time
+	}
+
+	transport.DialContext = dialer.DialContext
+	transport.ResponseHeaderTimeout = 5 * time.Second // Timeout for reading the response headers
+
+	// // Check if protocol is HTTPS and set up TLS configuration
+	// transport, err := getTlsTransport(target)
+	// if err != nil {
+	// 	log.Error("Error setting up TLS configuration", err)
+	// 	return nil, err
+	// }
 
 	// Setup the reverse proxy
 	proxy := &httputil.ReverseProxy{
@@ -62,9 +77,6 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 	reverseProxy := &ReverseProxy{
 		Route: route,
 		Proxy: proxy,
-		Client: &http.Client{
-			Timeout: 10,
-		},
 	}
 
 	return reverseProxy, nil
@@ -73,7 +85,8 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 // ServeHTTP is the HTTP handler for the ReverseProxy.
 // It sets the "X-Forwarded-Host" header on the incoming request and then passes the request to the underlying ReverseProxy's ServeHTTP method.
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Set the X-Forwarded-Host header on the incoming request
+
+	// // Set the X-Forwarded-Host header on the incoming request
 	if p.Route.Protocol == "https" {
 		r.Header.Set("X-Forwarded-Proto", "https")
 	} else {
@@ -84,7 +97,6 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("X-Forwarded-For", r.RemoteAddr)
 
 	ctx := r.Context()
-
 	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
 }
 
@@ -92,21 +104,6 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // The mux is configured to handle all requests to the root path ("/") and forward them to the provided handler.
 func (p *ReverseProxy) NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-
-	target := route.Target
-	url, err := getTargetURL(target)
-	if err != nil {
-		log.Info("Error parsing target url", err)
-		return nil, err
-	}
-
-	// Check if the target host is reachable
-	_, err = p.Client.Get(url.String() + "/")
-	if err != nil {
-		log.Error("Target host %s not reachable", url.Host, err)
-	}
-	// defer response.Body.Close()
-
 	// create a new route with the target path
 	mux.Handle(route.Pattern, handler)
 	return mux, nil
@@ -160,10 +157,12 @@ func getTlsTransport(target Target) (*http.Transport, error) {
 // getTargetURL parses the provided Target struct into a URL that can be used by the reverse proxy.
 // If there is an error parsing the target URL, an error is returned.
 func getTargetURL(target Target) (*url.URL, error) {
+
 	urlString := fmt.Sprintf("%s://%s:%d", target.Protocol, target.Host, target.Port)
 	targetUrl, err := url.Parse(urlString)
 	if err != nil {
 		return nil, err
 	}
+
 	return targetUrl, nil
 }

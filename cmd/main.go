@@ -9,6 +9,7 @@ import (
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
 	"syscall"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -43,7 +44,7 @@ func main() {
 	routes := config.Routes
 	// add go routine for each route
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(100)*time.Millisecond)
 	defer cancel()
 
 	sigChan := make(chan os.Signal, 1)
