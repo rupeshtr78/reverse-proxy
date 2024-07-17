@@ -29,11 +29,7 @@ type ReverseProxy struct {
 func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 
 	target := route.Target
-	url, err := getTargetURL(target)
-	if err != nil {
-		log.Info("Error parsing target url", err)
-		return nil, err
-	}
+	url, urlErr := getTargetURL(target)
 
 	transport := &http.Transport{
 		MaxIdleConns:          10,
@@ -50,11 +46,9 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 	transport.ResponseHeaderTimeout = 5 * time.Second // Timeout for reading the response headers
 
 	// // Check if protocol is HTTPS and set up TLS configuration
-	// transport, err := getTlsTransport(target)
-	// if err != nil {
-	// 	log.Error("Error setting up TLS configuration", err)
-	// 	return nil, err
-	// }
+	tlsConfig, tlsErr := getTlsTransport(target)
+
+	transport.TLSClientConfig = tlsConfig
 
 	// Setup the reverse proxy
 	proxy := &httputil.ReverseProxy{
@@ -73,6 +67,19 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 			return nil
 		},
 		Transport: transport,
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			if urlErr != nil {
+				log.Error("Error parsing target url", urlErr)
+				http.Error(w, "Error parsing target url", http.StatusBadGateway)
+			}
+			if tlsErr != nil {
+				log.Error("Error setting up TLS configuration", tlsErr)
+				http.Error(w, "Error setting up TLS configuration", http.StatusBadGateway)
+			}
+
+			log.Error("Error proxying request", err)
+			http.Error(w, fmt.Sprintf("Error Proxying request %v", http.StatusBadGateway), http.StatusBadGateway)
+		},
 	}
 	reverseProxy := &ReverseProxy{
 		Route: route,
@@ -125,9 +132,27 @@ func HandleCORS(next http.Handler) http.Handler {
 
 }
 
-func getTlsTransport(target Target) (*http.Transport, error) {
+func getTlsTransport(target Target) (*tls.Config, error) {
 	if target.Protocol != "https" {
 		return nil, nil
+	}
+
+	_, err := os.Stat(target.CertFile)
+	if err != nil {
+		log.Error("Error reading certificate file", err)
+		return nil, err
+	}
+
+	_, err = os.Stat(target.KeyFile)
+	if err != nil {
+		log.Error("Error reading key file", err)
+		return nil, err
+	}
+
+	_, err = os.Stat(target.CaCert)
+	if err != nil {
+		log.Error("Error reading CA certificate file", err)
+		return nil, err
 	}
 
 	tlsPair, err := tls.LoadX509KeyPair(target.CertFile, target.KeyFile)
@@ -136,7 +161,7 @@ func getTlsTransport(target Target) (*http.Transport, error) {
 		return nil, err
 	}
 
-	caCert, err := os.ReadFile(target.CertFile)
+	caCert, err := os.ReadFile(target.CaCert)
 	if err != nil {
 		log.Error("Error reading CA certificate file", err)
 		return nil, err
@@ -144,14 +169,12 @@ func getTlsTransport(target Target) (*http.Transport, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			Certificates: []tls.Certificate{tlsPair},
-			RootCAs:      caCertPool,
-		},
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsPair},
+		RootCAs:      caCertPool,
 	}
 
-	return transport, nil
+	return tlsConfig, nil
 }
 
 // getTargetURL parses the provided Target struct into a URL that can be used by the reverse proxy.

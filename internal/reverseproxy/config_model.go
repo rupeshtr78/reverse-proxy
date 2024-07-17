@@ -28,6 +28,7 @@ type Target struct {
 	Port     int    `yaml:"port omitempty=false"`
 	CertFile string `yaml:"certfile omitempty=false"`
 	KeyFile  string `yaml:"keyfile omitempty=false"`
+	CaCert   string `yaml:"cacert omitempty=false"`
 }
 
 func (config *Config) ValidateConfig() error {
