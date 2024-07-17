@@ -38,17 +38,24 @@ RUN mkdir config \
 
 COPY config/ config/
 
-# Install certificates
-RUN mkdir -p /usr/local/share/ca-certificates && \
-    cp config/keystore/targets/k8s/ca.crt /usr/local/share/ca-certificates/ && \
-    update-ca-certificates
+# ca cert 
+ARG CA_CERT_PATH=config/keystore/targets/k8s/ca.crt
+
+# Install certificates if CA_CERT_PATH is provided and file exists
+RUN if [ -f "${CA_CERT_PATH}" ]; then \
+    echo "CA certificate file found at ${CA_CERT_PATH}, copying and updating certificates"; \
+    mkdir -p /usr/local/share/ca-certificates && \
+    cp ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
+    update-ca-certificates; \
+else \
+    echo "CA certificate file not found at ${CA_CERT_PATH}, skipping CA certificate installation"; \
+fi
 
 # Set environment variables with default values
-ENV CONFIG_FILE=/config/config.yaml
+ENV CONFIG_FILE_ENV=/config/config.yaml
 ENV LOG_LEVEL=info
 ENV LOG_FILE_PATH=/logs/proxy.log
 ENV LOG_TO_FILE=false
-ENV PORT=6445
 
 # Create a non-root user and group with a writeable home directory
 ARG USER_NAME=proxyuser
@@ -69,6 +76,6 @@ COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserve
 
 
 EXPOSE 1000-65535
+ARG CONFIG_FILE=/config/config.yaml
 
-
-CMD ["/app/proxyserver"]
+CMD ["/app/proxyserver", "-config", "$CONFIG_FILE" ]

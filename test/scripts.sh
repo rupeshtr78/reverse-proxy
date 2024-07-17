@@ -9,3 +9,10 @@ SSL_CERT_DIR=/home/rupesh/aqrtr/security/ssl/ca/keystore/ca.crt go run ./cmd/mai
 
 # Test the Go program
 curl -H "Authorization: Bearer $TOKEN" https://10.0.0.213:6445/api/v1/namespaces/default/pods
+
+# Build the Docker image
+docker-compose up --build
+
+# RUN mkdir -p /usr/local/share/ca-certificates && \
+#     cp  ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
+#     update-ca-certificates

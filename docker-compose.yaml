@@ -3,6 +3,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        TARGETOS: ${TARGETOS}
+        TARGETARCH: ${TARGETARCH}
+        CA_CERT_PATH: ${CA_CERT_PATH}
+        CONFIG_FILE: ${CONFIG_FILE}
     ports:
       - "6445:6445"
       - "6446:6446"
