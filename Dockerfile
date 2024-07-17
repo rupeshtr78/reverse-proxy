@@ -4,8 +4,9 @@ FROM golang:1.22.2-bullseye AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
+RUN mkdir /app
 WORKDIR /app
-RUN mkdir -p /logs /config
+
 
 COPY go.mod go.sum ./
 
@@ -20,17 +21,22 @@ RUN go mod download
 
 # Copy the source code
 COPY . .
-RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -a -o reverseproxy ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -a -o proxyserver ./cmd/main.go
 
 FROM alpine:3.20.1 AS runtime
 
+# install bash
+RUN apk add --no-cache bash
+RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+
+RUN mkdir /app 
 WORKDIR /app
-COPY --from=builder /app/reverseproxy /app/reverseproxy
 
-COPY config/ /config/
-COPY --chown=0:0 . .
+RUN mkdir config \
+    && mkdir logs
 
-RUN apk add --no-cache ca-certificates bash sudo tini
+
+COPY config/ config/
 
 # Install certificates
 RUN mkdir -p /usr/local/share/ca-certificates && \
@@ -42,10 +48,10 @@ ENV CONFIG_FILE=/config/config.yaml
 ENV LOG_LEVEL=info
 ENV LOG_FILE_PATH=/logs/proxy.log
 ENV LOG_TO_FILE=false
-ENV PORT=8080
+ENV PORT=6445
 
 # Create a non-root user and group with a writeable home directory
-ARG USER_NAME=reverseproxy
+ARG USER_NAME=proxyuser
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
@@ -53,12 +59,16 @@ RUN addgroup -g ${USER_GID} user && \
     adduser -u ${USER_UID} -s /bin/bash -G user --disabled-password --gecos "" ${USER_NAME}
 
 # Create directories before changing ownership
-RUN mkdir -p /logs && \
-    chown -R $USER_UID:$USER_GID /app /config /logs
+RUN chown -R $USER_UID:$USER_GID /app
 
 
 # Set the non-root user to ensure the container runs as this user
 USER $USER_NAME
 
+COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserver
+
+
 EXPOSE ${PORT}
-CMD ["/app/reverseproxy"]
+
+
+CMD ["/app/proxyserver"]

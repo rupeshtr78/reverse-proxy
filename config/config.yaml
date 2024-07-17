@@ -1,13 +1,13 @@
 routes:
-  - name: "grafana"
-    listenHost: "10.0.0.213"
+  - name: "proxy-k8s"
+    listenHost: "0.0.0.0"
     listenport: 6445
     protocol: "https"
     certFile: "config/keystore/server/k8s.crt"
     keyFile: "config/keystore/server/k8s.key"
     pattern: "/"
     target:
-        name: "grafana-p920s"
+        name: "k8s-p920s"
         protocol: "https"
         host: "10.0.0.213"
         port: 6443
