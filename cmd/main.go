@@ -66,7 +66,7 @@ func main() {
 
 	select {
 	case sig := <-sigChan:
-		log.Info("Received signal %v", sig)
+		log.Infof("Received signal %v", nil, sig)
 	case err := <-errChan:
 		log.Error("Error in proxy server", err)
 	}

@@ -48,7 +48,6 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	// attrs = append(attrs,)
 	for _, v := range args {
 		// attrs = append(attrs, slog.Any("attrs", v))
-
 		if ia, ok := v.(slog.Attr); ok {
 			attrs = append(attrs, ia)
 			continue
@@ -81,6 +80,11 @@ func Attrfunc(groups []string, attr slog.Attr) slog.Attr {
 }
 
 func (l *Logger) Info(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
+	l.log(slog.LevelInfo, msg, args...)
+}
+
+func (l *Logger) Infof(msg string, err error, args ...any) {
 	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelInfo, msg, args...)
 }
