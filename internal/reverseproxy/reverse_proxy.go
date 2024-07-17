@@ -40,7 +40,7 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 			req.URL.Scheme = url.Scheme
 			req.URL.Host = url.Host
 			req.URL.Path = url.Path + req.URL.Path // adds proxy path plus request url path
-			log.Debug("Request proxied to", req.URL.Host, req.URL.Path)
+			log.Debug("Request proxied to %s%s", req.URL.Host, req.URL.Path)
 		},
 		// Modify the reverse proxy to add the CORS headers:
 		ModifyResponse: func(resp *http.Response) error {
@@ -80,14 +80,14 @@ func getTargetURL(target Target) (*url.URL, error) {
 
 // NewServeMux creates a new HTTP request multiplexer (ServeMux) that will route incoming requests to the provided handler.
 // The mux is configured to handle all requests to the root path ("/") and forward them to the provided handler.
-// If there is an error creating the mux, an error is returned.
 func NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	mux.Handle("/", handler)
+	mux.Handle(route.Pattern, handler)
 	return mux, nil
 
 }
 
+// HandleCORS is a middleware function that adds CORS headers to the response.
 func HandleCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -46,7 +47,13 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	// Append provided arguments as attributes
 	// attrs = append(attrs,)
 	for _, v := range args {
-		attrs = append(attrs, slog.Any("attrs", v))
+		// attrs = append(attrs, slog.Any("attrs", v))
+
+		if ia, ok := v.(slog.Attr); ok {
+			attrs = append(attrs, ia)
+			continue
+		}
+
 	}
 
 	l.Logger.LogAttrs(ctx, level, msg, attrs...)
@@ -74,22 +81,27 @@ func Attrfunc(groups []string, attr slog.Attr) slog.Attr {
 }
 
 func (l *Logger) Info(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelInfo, msg, args...)
 }
 
 func (l *Logger) Debug(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelDebug, msg, args...)
 }
 
 func (l *Logger) Warn(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelWarn, msg, args...)
 }
 
 func (l *Logger) Error(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelError, msg, args...)
 }
 
 func (l *Logger) Fatal(msg string, args ...any) {
+	msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelError, msg, args...)
 	os.Exit(1)
 }

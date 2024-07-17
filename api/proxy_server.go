@@ -12,11 +12,7 @@ import (
 
 var log = logger.NewLogger(os.Stdout, "proxyserver", slog.LevelDebug)
 
-// ProxyServer sets up and starts a reverse proxy server for the given route.
-// It creates a new reverse proxy using the provided route configuration,
-// and then creates a new ServeMux to handle the routing for the proxy.
-// The server is then started and listens on the specified port.
-// If any errors occur during the setup or startup, they are logged and returned.
+// ProxyServer creates a new reverse proxy server for the given route.
 func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 	proxy, err := reverseproxy.NewReverseProxy(ctx, route)
 	if err != nil {
@@ -28,17 +24,11 @@ func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 
 	mux, err := reverseproxy.NewServeMux(ctx, route, proxy)
 	if err != nil {
-		log.Error("Error creating mux", err)
+		log.Error("Error creating ServeMux", err)
 		return err
 	}
 
-	log.Info("Proxy Server created for route", route.Name, route.ListenPort)
-
-	// err = http.ListenAndServe(fmt.Sprintf(":%d", route.ListenPort), reverseproxy.HandleCORS(mux))
-	// if err != nil {
-	// 	log.Error("Error starting proxy server")
-	// 	return err
-	// }
+	log.Info("Proxy Server started for target name: %s, listening on 0.0.0.0:%d%s", route.Target.Name, route.ListenPort, route.Pattern)
 
 	// Check if the target protocol is HTTPS
 	if route.Target.Protocol == "https" {

@@ -4,9 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
 	"reverseproxy/api"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
+	"syscall"
 
 	"github.com/spf13/viper"
 )
@@ -32,11 +34,21 @@ func main() {
 		panic(err)
 	}
 
+	err = config.ValidateConfig()
+	if err != nil {
+		log.Error("Error validating config", err)
+		return
+	}
+
 	routes := config.Routes
 	// add go routine for each route
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	defer close(sigChan)
 
 	// var wg sync.WaitGroup
 	// wg.Add(len(routes))
@@ -44,16 +56,19 @@ func main() {
 	defer close(errChan)
 
 	for _, route := range routes {
-		go func() {
+		go func(route reverseproxy.Route) {
 			err := api.ProxyServer(ctx, &route)
 			errChan <- err
 
-		}()
+		}(route)
 
 	}
 
-	for i := 0; i < len(routes); i++ {
-		log.Error("Error in proxy server", <-errChan)
+	select {
+	case sig := <-sigChan:
+		log.Info("Received signal %v", sig)
+	case err := <-errChan:
+		log.Error("Error in proxy server", err)
 	}
 
 }
