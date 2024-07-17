@@ -3,14 +3,14 @@ routes:
     listenHost: "10.0.0.213"
     listenport: 6445
     protocol: "https"
-    certFile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.crt"
-    keyFile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.key"
+    certFile: "config/keystore/server/k8s.crt"
+    keyFile: "config/keystore/server/k8s.key"
     pattern: "/"
     target:
         name: "grafana-p920s"
         protocol: "https"
         host: "10.0.0.213"
         port: 6443
-        certfile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.crt"
-        keyfile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.key"
-        cacert: "/home/rupesh/aqrtr/security/ssl/ca/keystore/ca.crt"
+        certfile: "config/keystore/targets/k8s/k8s.crt"
+        keyfile: "config/keystore/targets/k8s/k8s.key"
+        cacert: "config/keystore/targets/k8s/ca.crt"

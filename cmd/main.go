@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"reverseproxy/api"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
@@ -18,16 +20,25 @@ var log = logger.NewLogger(os.Stdout, "main", slog.LevelDebug)
 
 func main() {
 
+	var configFile = flag.String("config", "config/config.yaml", "config file path")
+
+	flag.Parse()
+
+	// extract file path and file name
+	configPath, configName := filepath.Split(*configFile)
+
 	// Setup Viper
-	viper.SetConfigName("config")  // name of config file (without extension)
-	viper.SetConfigType("yaml")    // YAML format
-	viper.AddConfigPath("config/") // look for config in the config directory
+	viper.SetConfigName(configName) // name of config file (without extension)
+	viper.SetConfigType("yaml")     // YAML format
+	viper.AddConfigPath(configPath) // look for config in the config directory
 
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Error("Error reading config file", err)
 		return
 	}
+
+	log.Info("Config file loaded successfully", *configFile)
 	config := &reverseproxy.Config{}
 
 	err = viper.Unmarshal(config)

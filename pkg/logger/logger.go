@@ -17,7 +17,12 @@ type Logger struct {
 
 // NewLogger creates a new logger with the specified name and log level.
 func NewLogger(output io.Writer, name string, level slog.Level) *Logger {
-	handler := GetHandler(output, level).WithGroup(name)
+	handler, err := GetHandler(output, level)
+	if err != nil {
+		panic(err)
+	}
+
+	handler = handler.WithGroup(name)
 	logger := slog.New(handler)
 
 	l := &Logger{Logger: logger}
@@ -26,19 +31,32 @@ func NewLogger(output io.Writer, name string, level slog.Level) *Logger {
 }
 
 // GetHandler returns a slog.Handler with the specified log level.
-func GetHandler(w io.Writer, level slog.Level) slog.Handler {
-	opts := &slog.HandlerOptions{
+func GetHandler(w io.Writer, level slog.Level) (slog.Handler, error) {
+	opts := &slog.HandlerOptions{}
+
+	// Check if the output file exists using reflection
+	if file, ok := w.(*os.File); ok {
+		// Check if the file exists
+		if _, err := os.Stat(file.Name()); err != nil {
+			return nil, err
+		}
+	}
+
+	opts = &slog.HandlerOptions{
 		AddSource:   false,
 		Level:       level,
 		ReplaceAttr: Attrfunc,
 	}
-	return slog.NewJSONHandler(w, opts)
+
+	return slog.NewJSONHandler(w, opts), nil
 }
 
 // log function adds caller information and request ID to log messages.
 func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	attrs := []slog.Attr{}
 	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	if _, file, line, ok := runtime.Caller(2); ok {
 		attrs = append(attrs, slog.String("file", file), slog.Int("line", line))
@@ -47,10 +65,10 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	// Append provided arguments as attributes
 	// attrs = append(attrs,)
 	for _, v := range args {
-		// attrs = append(attrs, slog.Any("attrs", v))
 		if ia, ok := v.(slog.Attr); ok {
 			attrs = append(attrs, ia)
-			continue
+		} else {
+			attrs = append(attrs, slog.Any("value", v))
 		}
 
 	}
@@ -58,6 +76,7 @@ func (l *Logger) log(level slog.Level, msg string, args ...any) {
 	l.Logger.LogAttrs(ctx, level, msg, attrs...)
 }
 
+// Attrfunc is a function that modifies the attributes of a log message.
 func Attrfunc(groups []string, attr slog.Attr) slog.Attr {
 	switch attr.Key {
 	case slog.TimeKey:
@@ -80,7 +99,7 @@ func Attrfunc(groups []string, attr slog.Attr) slog.Attr {
 }
 
 func (l *Logger) Info(msg string, args ...any) {
-	msg = fmt.Sprintf(msg, args...)
+	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelInfo, msg, args...)
 }
 
@@ -90,22 +109,22 @@ func (l *Logger) Infof(msg string, err error, args ...any) {
 }
 
 func (l *Logger) Debug(msg string, args ...any) {
-	msg = fmt.Sprintf(msg, args...)
+	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelDebug, msg, args...)
 }
 
 func (l *Logger) Warn(msg string, args ...any) {
-	msg = fmt.Sprintf(msg, args...)
+	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelWarn, msg, args...)
 }
 
 func (l *Logger) Error(msg string, args ...any) {
-	msg = fmt.Sprintf(msg, args...)
+	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelError, msg, args...)
 }
 
 func (l *Logger) Fatal(msg string, args ...any) {
-	msg = fmt.Sprintf(msg, args...)
+	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelError, msg, args...)
 	os.Exit(1)
 }
