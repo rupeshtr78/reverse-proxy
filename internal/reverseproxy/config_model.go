@@ -31,6 +31,7 @@ type Target struct {
 	CaCert   string `yaml:"cacert omitempty=false"`
 }
 
+// ValidateConfig validates the configuration for the reverse proxy.
 func (config *Config) ValidateConfig() error {
 	if len(config.Routes) == 0 {
 		return fmt.Errorf("no routes defined in the configuration")
@@ -44,6 +45,7 @@ func (config *Config) ValidateConfig() error {
 	return nil
 }
 
+// validateRoute validates a single route configuration.
 func validateRoute(route Route) error {
 	if route.ListenPort <= 0 || route.ListenPort > 65535 {
 		return fmt.Errorf("invalid listenport for route %s", route.Name)
@@ -66,6 +68,7 @@ func validateRoute(route Route) error {
 
 }
 
+// validateCertPath validates the path to a certificate file.
 func validateCertPath(certPath string) error {
 	// Add your certificate validation logic here
 	// check if the file exists

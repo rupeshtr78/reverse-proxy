@@ -15,6 +15,9 @@ type Logger struct {
 	Logger *slog.Logger
 }
 
+// exitFunc is a package-level variable to handle exit in a testable way
+var exitFunc = os.Exit
+
 // NewLogger creates a new logger with the specified name and log level.
 func NewLogger(output io.Writer, name string, level slog.Level) *Logger {
 	handler, err := GetHandler(output, level)
@@ -126,5 +129,5 @@ func (l *Logger) Error(msg string, args ...any) {
 func (l *Logger) Fatal(msg string, args ...any) {
 	// msg = fmt.Sprintf(msg, args...)
 	l.log(slog.LevelError, msg, args...)
-	os.Exit(1)
+	exitFunc(1)
 }
