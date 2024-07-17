@@ -78,4 +78,4 @@ COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserve
 EXPOSE 1000-65535
 ARG CONFIG_FILE=/config/config.yaml
 
-CMD ["/app/proxyserver", "-config", "$CONFIG_FILE" ]
+CMD ["/app/proxyserver", "-config", "${CONFIG_FILE}" ]
