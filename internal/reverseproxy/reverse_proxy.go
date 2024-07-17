@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -18,8 +17,9 @@ var log = logger.NewLogger(os.Stdout, "reverseproxy", slog.LevelDebug)
 
 // ReverseProxy is a struct that holds a Route and a Proxy. It is used to proxy HTTP requests to a target URL.
 type ReverseProxy struct {
-	Route *Route
-	Proxy *httputil.ReverseProxy
+	Route  *Route
+	Proxy  *httputil.ReverseProxy
+	Client *http.Client
 }
 
 // NewReverseProxy creates a new ReverseProxy instance that can be used to proxy HTTP requests to a target URL.
@@ -35,28 +35,10 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 	}
 
 	// Check if protocol is HTTPS and set up TLS configuration
-	var transport *http.Transport
-	if target.Protocol == "https" {
-		cert, err := tls.LoadX509KeyPair(target.CertFile, target.KeyFile)
-		if err != nil {
-			log.Error("Error loading certificate files", err)
-			return nil, err
-		}
-
-		caCert, err := ioutil.ReadFile(target.CertFile)
-		if err != nil {
-			log.Error("Error reading CA certificate file", err)
-			return nil, err
-		}
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
-
-		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				Certificates: []tls.Certificate{cert},
-				RootCAs:      caCertPool,
-			},
-		}
+	transport, err := getTlsTransport(target)
+	if err != nil {
+		log.Error("Error setting up TLS configuration", err)
+		return nil, err
 	}
 
 	// Setup the reverse proxy
@@ -80,6 +62,9 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 	reverseProxy := &ReverseProxy{
 		Route: route,
 		Proxy: proxy,
+		Client: &http.Client{
+			Timeout: 10,
+		},
 	}
 
 	return reverseProxy, nil
@@ -99,27 +84,32 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("X-Forwarded-For", r.RemoteAddr)
 
 	ctx := r.Context()
-	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
-}
 
-// getTargetURL parses the provided Target struct into a URL that can be used by the reverse proxy.
-// If there is an error parsing the target URL, an error is returned.
-func getTargetURL(target Target) (*url.URL, error) {
-	urlString := fmt.Sprintf("%s://%s:%d", target.Protocol, target.Host, target.Port)
-	targetUrl, err := url.Parse(urlString)
-	if err != nil {
-		return nil, err
-	}
-	return targetUrl, nil
+	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
 }
 
 // NewServeMux creates a new HTTP request multiplexer (ServeMux) that will route incoming requests to the provided handler.
 // The mux is configured to handle all requests to the root path ("/") and forward them to the provided handler.
-func NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http.ServeMux, error) {
+func (p *ReverseProxy) NewServeMux(ctx context.Context, route *Route, handler http.Handler) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
+
+	target := route.Target
+	url, err := getTargetURL(target)
+	if err != nil {
+		log.Info("Error parsing target url", err)
+		return nil, err
+	}
+
+	// Check if the target host is reachable
+	_, err = p.Client.Get(url.String() + "/")
+	if err != nil {
+		log.Error("Target host %s not reachable", url.Host, err)
+	}
+	// defer response.Body.Close()
+
+	// create a new route with the target path
 	mux.Handle(route.Pattern, handler)
 	return mux, nil
-
 }
 
 // HandleCORS is a middleware function that adds CORS headers to the response.
@@ -133,6 +123,47 @@ func HandleCORS(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+
 	})
 
+}
+
+func getTlsTransport(target Target) (*http.Transport, error) {
+	if target.Protocol != "https" {
+		return nil, nil
+	}
+
+	tlsPair, err := tls.LoadX509KeyPair(target.CertFile, target.KeyFile)
+	if err != nil {
+		log.Error("Error loading certificate files", err)
+		return nil, err
+	}
+
+	caCert, err := os.ReadFile(target.CertFile)
+	if err != nil {
+		log.Error("Error reading CA certificate file", err)
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			Certificates: []tls.Certificate{tlsPair},
+			RootCAs:      caCertPool,
+		},
+	}
+
+	return transport, nil
+}
+
+// getTargetURL parses the provided Target struct into a URL that can be used by the reverse proxy.
+// If there is an error parsing the target URL, an error is returned.
+func getTargetURL(target Target) (*url.URL, error) {
+	urlString := fmt.Sprintf("%s://%s:%d", target.Protocol, target.Host, target.Port)
+	targetUrl, err := url.Parse(urlString)
+	if err != nil {
+		return nil, err
+	}
+	return targetUrl, nil
 }

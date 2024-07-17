@@ -1,11 +1,14 @@
 routes:
   - name: "grafana"
+    listenHost: "0.0.0.0"
     listenport: 6442
-    protocol: "https"
+    protocol: "http"
+    certFile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.crt"
+    keyFile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.key"
     pattern: "/"
     target:
         name: "grafana-p920s"
-        protocol: "https"
+        protocol: "http"
         host: "192.168.2.130"
         port: 6443
         certfile: "/home/rupesh/aqrtr/security/ssl/clients/k8s/k8s.crt"

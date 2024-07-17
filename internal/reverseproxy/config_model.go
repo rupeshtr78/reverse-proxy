@@ -12,9 +12,12 @@ type Config struct {
 }
 type Route struct {
 	Name       string `yaml:"name omitempty=false"`
+	ListenHost string `yaml:"listenhost omitempty=false"`
 	ListenPort int    `yaml:"listenport omitempty=false"`
 	Protocol   string `yaml:"protocol omitempty=false"`
 	Pattern    string `yaml:"pattern omitempty=false"`
+	CertFile   string `yaml:"certfile omitempty=false"`
+	KeyFile    string `yaml:"keyfile omitempty=false"`
 	Target     Target `yaml:"target omitempty=false"`
 }
 

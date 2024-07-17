@@ -22,19 +22,31 @@ func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 
 	// http.Handle("/", proxy) // testing
 
-	mux, err := reverseproxy.NewServeMux(ctx, route, proxy)
+	mux, err := proxy.NewServeMux(ctx, route, proxy)
 	if err != nil {
 		log.Error("Error creating ServeMux", err)
 		return err
 	}
 
-	log.Info("Proxy Server started for target name: %s, listening on 0.0.0.0:%d%s", route.Target.Name, route.ListenPort, route.Pattern)
+	log.Info("Proxy Server started for target name: %s, listening on %s:%d%s", route.Target.Name, route.ListenHost, route.ListenPort, route.Pattern)
 
 	// 	// Start the server without TLS configuration
-	err = http.ListenAndServe(fmt.Sprintf("10.0.0.213:%d", route.ListenPort), reverseproxy.HandleCORS(mux))
-	if err != nil {
-		log.Error("Error starting proxy server")
-		return err
+	if route.Protocol == "http" {
+		err = http.ListenAndServe(fmt.Sprintf("%s:%d", route.ListenHost, route.ListenPort), reverseproxy.HandleCORS(mux))
+		if err != nil {
+			log.Error("Error starting proxy server")
+			return err
+		}
+	} else if route.Protocol == "https" {
+		// Start the server with TLS configuration
+		err = http.ListenAndServeTLS(fmt.Sprintf("%s:%d", route.ListenHost, route.ListenPort), route.CertFile, route.KeyFile, reverseproxy.HandleCORS(mux))
+		if err != nil {
+			log.Error("Error starting proxy server")
+			return err
+		}
+	} else {
+		log.Error("Invalid protocol specified")
+		return fmt.Errorf("invalid protocol specified")
 	}
 
 	return nil
