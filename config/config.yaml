@@ -14,3 +14,13 @@ routes:
         certfile: "config/keystore/targets/k8s/k8s.crt"
         keyfile: "config/keystore/targets/k8s/k8s.key"
         cacert: "config/keystore/targets/k8s/ca.crt"
+  - name: "grafana"
+    listenHost: "0.0.0.0"
+    listenport: 6446
+    protocol: "http"
+    pattern: "/"
+    target:
+        name: "grafana-p920s"
+        protocol: "http"
+        host: "10.0.0.213"
+        port: 3000
