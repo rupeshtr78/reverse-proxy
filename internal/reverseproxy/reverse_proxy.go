@@ -2,7 +2,10 @@ package reverseproxy
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -31,7 +34,30 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 		return nil, err
 	}
 
-	// proxy := httputil.NewSingleHostReverseProxy(url)
+	// Check if protocol is HTTPS and set up TLS configuration
+	var transport *http.Transport
+	if target.Protocol == "https" {
+		cert, err := tls.LoadX509KeyPair(target.CertFile, target.KeyFile)
+		if err != nil {
+			log.Error("Error loading certificate files", err)
+			return nil, err
+		}
+
+		caCert, err := ioutil.ReadFile(target.CertFile)
+		if err != nil {
+			log.Error("Error reading CA certificate file", err)
+			return nil, err
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates: []tls.Certificate{cert},
+				RootCAs:      caCertPool,
+			},
+		}
+	}
 
 	// Setup the reverse proxy
 	proxy := &httputil.ReverseProxy{
@@ -49,6 +75,7 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 			resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			return nil
 		},
+		Transport: transport,
 	}
 	reverseProxy := &ReverseProxy{
 		Route: route,
@@ -61,14 +88,15 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 // ServeHTTP is the HTTP handler for the ReverseProxy.
 // It sets the "X-Forwarded-Host" header on the incoming request and then passes the request to the underlying ReverseProxy's ServeHTTP method.
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if p.Route.Target.Protocol == "https" {
+	// Set the X-Forwarded-Host header on the incoming request
+	if p.Route.Protocol == "https" {
 		r.Header.Set("X-Forwarded-Proto", "https")
 	} else {
 		r.Header.Set("X-Forwarded-Proto", "http")
 	}
 
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	// X-Forwarded-For
+	r.Header.Set("X-Forwarded-For", r.RemoteAddr)
 
 	ctx := r.Context()
 	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
