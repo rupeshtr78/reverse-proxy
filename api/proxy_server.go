@@ -30,21 +30,11 @@ func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {
 
 	log.Info("Proxy Server started for target name: %s, listening on 0.0.0.0:%d%s", route.Target.Name, route.ListenPort, route.Pattern)
 
-	// Check if the target protocol is HTTPS
-	if route.Target.Protocol == "https" {
-		// Start the server with TLS configuration
-		err = http.ListenAndServeTLS(fmt.Sprintf(":%d", route.ListenPort), route.Target.CertFile, route.Target.KeyFile, reverseproxy.HandleCORS(mux))
-		if err != nil {
-			log.Error("Error starting proxy server")
-			return err
-		}
-	} else {
-		// Start the server without TLS configuration
-		err = http.ListenAndServe(fmt.Sprintf(":%d", route.ListenPort), reverseproxy.HandleCORS(mux))
-		if err != nil {
-			log.Error("Error starting proxy server")
-			return err
-		}
+	// 	// Start the server without TLS configuration
+	err = http.ListenAndServe(fmt.Sprintf("10.0.0.213:%d", route.ListenPort), reverseproxy.HandleCORS(mux))
+	if err != nil {
+		log.Error("Error starting proxy server")
+		return err
 	}
 
 	return nil

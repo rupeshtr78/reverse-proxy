@@ -61,8 +61,15 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 // ServeHTTP is the HTTP handler for the ReverseProxy.
 // It sets the "X-Forwarded-Host" header on the incoming request and then passes the request to the underlying ReverseProxy's ServeHTTP method.
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if p.Route.Target.Protocol == "https" {
+		r.Header.Set("X-Forwarded-Proto", "https")
+	} else {
+		r.Header.Set("X-Forwarded-Proto", "http")
+	}
+
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	// X-Forwarded-For or X-Forwarded-Proto
+	// X-Forwarded-For
+
 	ctx := r.Context()
 	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
 }
