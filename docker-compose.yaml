@@ -12,7 +12,7 @@ services:
       - "6445:6445"
       - "6446:6446"
     environment:
-      CONFIG_FILE: "/config/config.yaml"
+      CONFIG_FILE_PATH: "config/config.yaml"
       LOG_LEVEL: "info"
       LOG_FILE_PATH: "/logs/proxy.log"
     volumes:
@@ -20,6 +20,7 @@ services:
       - ./logs:/logs
     networks:
       - proxy_network
+    command: ["/app/proxyserver", "-config", "config/config.yaml"]
 
 networks:
   proxy_network:

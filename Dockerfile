@@ -25,6 +25,15 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -
 
 FROM alpine:3.20.1 AS runtime
 
+# Create a non-root user and group with a writeable home directory
+ARG USER_NAME=proxyuser
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+# congig file path
+ARG CONFIG_FILE=/config/config.yaml
+# ca cert 
+ARG CA_CERT_PATH=config/keystore/targets/k8s/ca.crt
+
 # install bash
 RUN apk add --no-cache bash
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
@@ -38,8 +47,7 @@ RUN mkdir config \
 
 COPY config/ config/
 
-# ca cert 
-ARG CA_CERT_PATH=config/keystore/targets/k8s/ca.crt
+
 
 # Install certificates if CA_CERT_PATH is provided and file exists
 RUN if [ -f "${CA_CERT_PATH}" ]; then \
@@ -52,15 +60,12 @@ else \
 fi
 
 # Set environment variables with default values
-ENV CONFIG_FILE_ENV=/config/config.yaml
+ENV CONFIG_FILE_PATH=config/config.yaml
 ENV LOG_LEVEL=info
 ENV LOG_FILE_PATH=/logs/proxy.log
 ENV LOG_TO_FILE=false
 
-# Create a non-root user and group with a writeable home directory
-ARG USER_NAME=proxyuser
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
+
 
 RUN addgroup -g ${USER_GID} user && \
     adduser -u ${USER_UID} -s /bin/bash -G user --disabled-password --gecos "" ${USER_NAME}
@@ -76,6 +81,6 @@ COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserve
 
 
 EXPOSE 1000-65535
-ARG CONFIG_FILE=/config/config.yaml
 
-CMD ["/app/proxyserver", "-config", "${CONFIG_FILE}" ]
+
+CMD ["/app/proxyserver", "-config", "${CONFIG_FILE_PATH}" ]
