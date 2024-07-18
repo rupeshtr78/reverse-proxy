@@ -37,6 +37,7 @@ ARG CA_CERT_PATH=config/keystore/targets/k8s/ca.crt
 # install bash
 RUN apk add --no-cache bash
 RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+# install curl 
 
 RUN mkdir /app 
 WORKDIR /app
@@ -50,14 +51,9 @@ COPY config/ config/
 
 
 # Install certificates if CA_CERT_PATH is provided and file exists
-RUN if [ -f "${CA_CERT_PATH}" ]; then \
-    echo "CA certificate file found at ${CA_CERT_PATH}, copying and updating certificates"; \
-    mkdir -p /usr/local/share/ca-certificates && \
-    cp ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
-    update-ca-certificates; \
-else \
-    echo "CA certificate file not found at ${CA_CERT_PATH}, skipping CA certificate installation"; \
-fi
+RUN mkdir -p /usr/local/share/ca-certificates && \
+    cp config/keystore/targets/k8s/ca.crt /usr/local/share/ca-certificates/ && \
+    update-ca-certificates
 
 # Set environment variables with default values
 ENV CONFIG_FILE_PATH=config/config.yaml

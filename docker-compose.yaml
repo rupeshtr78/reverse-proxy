@@ -10,6 +10,7 @@ services:
         CONFIG_FILE: ${CONFIG_FILE}
     ports:
       - "6443:6443"
+      - "6445:6445"
       - "6446:6446"
     environment:
       CONFIG_FILE_PATH: "config/config.yaml"
