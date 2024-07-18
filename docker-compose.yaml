@@ -9,7 +9,7 @@ services:
         CA_CERT_PATH: ${CA_CERT_PATH}
         CONFIG_FILE: ${CONFIG_FILE}
     ports:
-      - "6445:6445"
+      - "6443:6443"
       - "6446:6446"
     environment:
       CONFIG_FILE_PATH: "config/config.yaml"
