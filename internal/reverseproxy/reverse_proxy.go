@@ -144,6 +144,7 @@ func HandleCORS(next http.Handler) http.Handler {
 
 }
 
+// getTlsTransport returns a TLS configuration for the provided target. // TODO move this to the target struct
 func getTlsTransport(target Target) (*tls.Config, error) {
 	if target.Protocol != "https" {
 		return nil, nil
