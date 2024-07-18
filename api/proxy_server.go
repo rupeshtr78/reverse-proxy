@@ -3,14 +3,14 @@ package api
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
+	"reverseproxy/internal/constants"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
 )
 
-var log = logger.NewLogger(os.Stdout, "proxyserver", slog.LevelDebug)
+var log = logger.NewLogger(os.Stdout, "proxyserver", constants.LoggingLevel)
 
 // ProxyServer creates a new reverse proxy server for the given route.
 func ProxyServer(ctx context.Context, route *reverseproxy.Route) error {

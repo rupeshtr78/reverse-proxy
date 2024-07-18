@@ -1,6 +1,8 @@
 package reverseproxy
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 )
@@ -29,6 +31,51 @@ type Target struct {
 	CertFile string `yaml:"certfile omitempty=false"`
 	KeyFile  string `yaml:"keyfile omitempty=false"`
 	CaCert   string `yaml:"cacert omitempty=false"`
+}
+
+func (target *Target) GetTlsTransport() (*tls.Config, error) {
+	if target.Protocol != "https" {
+		return nil, nil
+	}
+
+	_, err := os.Stat(target.CertFile)
+	if err != nil {
+		log.Error("Error reading certificate file", err)
+		return nil, err
+	}
+
+	_, err = os.Stat(target.KeyFile)
+	if err != nil {
+		log.Error("Error reading key file", err)
+		return nil, err
+	}
+
+	_, err = os.Stat(target.CaCert)
+	if err != nil {
+		log.Error("Error reading CA certificate file", err)
+		return nil, err
+	}
+
+	tlsPair, err := tls.LoadX509KeyPair(target.CertFile, target.KeyFile)
+	if err != nil {
+		log.Error("Error loading certificate files", err)
+		return nil, err
+	}
+
+	caCert, err := os.ReadFile(target.CaCert)
+	if err != nil {
+		log.Error("Error reading CA certificate file", err)
+		return nil, err
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{tlsPair},
+		RootCAs:      caCertPool,
+	}
+
+	return tlsConfig, nil
 }
 
 // ValidateConfig validates the configuration for the reverse proxy.
