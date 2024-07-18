@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"go/constant"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -22,7 +21,7 @@ var log = logger.NewLogger(os.Stdout, "main", constants.LoggingLevel)
 func main() {
 
 	var configFile = flag.String("config", "config/config.yaml", "config file path")
-	var logLevel = flag.String("loglevel", "debug", "log level")
+	var logLevel = flag.String("loglevel", "info", "log level")
 
 	flag.Parse()
 
@@ -36,7 +35,7 @@ func main() {
 	viper.SetConfigType("yaml")     // YAML format
 	viper.AddConfigPath(configPath) // look for config in the config directory
 
-	err :		= viper.ReadInConfig()
+	err := viper.ReadInConfig()
 	if err != nil {
 		log.Error("Error reading config file", err)
 		return
