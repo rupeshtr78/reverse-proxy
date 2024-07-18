@@ -1,6 +1,6 @@
 # Reverse Proxy Server
 
-This repository contains a reverse proxy server implementation built with Go. The server supports HTTP and HTTPS protocols and allows route configuration through a YAML file. It also includes Docker support for containerized deployment.
+This repository contains a reverse proxy server implementation built with Go. The server supports HTTP and HTTPS protocols and allows multiple route configuration through a YAML file. Each route runs on seperate go routine allowing port based routing.It also includes Docker support for containerized deployment.
 
 ## Table of Contents
 
