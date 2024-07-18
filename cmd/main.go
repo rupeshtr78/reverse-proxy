@@ -20,15 +20,16 @@ var log = logger.NewLogger(os.Stdout, "main", constants.LoggingLevel)
 
 func main() {
 
-	var configFile = flag.String("config", "config/config.yaml", "config file path")
-	var logLevel = flag.String("loglevel", "info", "log level")
+	configFile := constants.GetEnv("CONFIG_FILE_PATH", "config/metrics.yaml")
+	// logLevel := constants.GetEnv("LOG_LEVEL", "info")
+
+	flag.StringVar(&configFile, "config", configFile, "config file path")
+	// flag.StringVar(&logLevel, "loglevel", logLevel, "log level")
 
 	flag.Parse()
 
 	// extract file path and file name
-	configPath, configName := filepath.Split(*configFile)
-	// set log level
-	constants.LoggingLevel = constants.SetLogLevel(*logLevel)
+	configPath, configName := filepath.Split(configFile)
 
 	// Setup Viper
 	viper.SetConfigName(configName) // name of config file (without extension)
@@ -41,7 +42,7 @@ func main() {
 		return
 	}
 
-	log.Info("Config file loaded successfully", *configFile)
+	log.Info("Config file loaded successfully", configFile)
 	config := &reverseproxy.Config{}
 
 	err = viper.Unmarshal(config)

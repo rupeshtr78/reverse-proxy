@@ -79,4 +79,5 @@ COPY --chown=$USER_UID:$USER_GID --from=builder /app/proxyserver /app/proxyserve
 EXPOSE 1000-65535
 
 
-CMD ["/app/proxyserver", "-config", "${CONFIG_FILE_PATH}" ]
+CMD ["/app/proxyserver"]
+

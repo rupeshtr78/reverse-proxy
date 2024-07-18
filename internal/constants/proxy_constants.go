@@ -2,10 +2,11 @@ package constants
 
 import (
 	"log/slog"
+	"os"
 	"time"
 )
 
-var LoggingLevel = slog.LevelInfo
+var LoggingLevel = SetLogLevel(GetEnv("LOG_LEVEL", "info"))
 
 // Proxy Configurations
 const (
@@ -50,6 +51,7 @@ var (
 
 // SetLogLevel sets the logging level for the application.
 func SetLogLevel(level string) slog.Level {
+	var LoggingLevel slog.Level
 	switch level {
 	case "debug":
 		LoggingLevel = slog.LevelDebug
@@ -64,4 +66,13 @@ func SetLogLevel(level string) slog.Level {
 	}
 
 	return LoggingLevel
+}
+
+// getEnv reads an environment variable or returns a default value.
+func GetEnv(key, defaultValue string) string {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return defaultValue
+	}
+	return value
 }
