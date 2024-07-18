@@ -15,13 +15,15 @@ services:
     environment:
       CONFIG_FILE_PATH: "config/config.yaml"
       LOG_LEVEL: "info"
-      LOG_FILE_PATH: "/logs/proxy.log"
+      LOG_FILE_PATH: "logs/proxy.log"
     volumes:
       - ./config:/config
       - ./logs:/logs
     networks:
       - proxy_network
-    command: ["/app/proxyserver", "-config", "config/config.yaml"]
+    command: ["/app/proxyserver", "-config", "${CONFIG_FILE_PATH}"]
+    restart: always
+    
 
 networks:
   proxy_network:

@@ -30,9 +30,9 @@ ARG USER_NAME=proxyuser
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 # congig file path
-ARG CONFIG_FILE=/config/config.yaml
+ARG CONFIG_FILE
 # ca cert 
-ARG CA_CERT_PATH=config/keystore/targets/k8s/ca.crt
+ARG CA_CERT_PATH
 
 # install bash
 RUN apk add --no-cache bash
@@ -52,13 +52,13 @@ COPY config/ config/
 
 # Install certificates if CA_CERT_PATH is provided and file exists
 RUN mkdir -p /usr/local/share/ca-certificates && \
-    cp config/keystore/targets/k8s/ca.crt /usr/local/share/ca-certificates/ && \
+    cp ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
     update-ca-certificates
 
 # Set environment variables with default values
-ENV CONFIG_FILE_PATH=config/config.yaml
+ENV CONFIG_FILE_PATH=${CONFIG_FILE}
 ENV LOG_LEVEL=info
-ENV LOG_FILE_PATH=/logs/proxy.log
+ENV LOG_FILE_PATH=logs/proxy.log
 ENV LOG_TO_FILE=false
 
 
