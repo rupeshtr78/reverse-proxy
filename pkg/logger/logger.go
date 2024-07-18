@@ -6,13 +6,18 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"reverseproxy/internal/constants"
 	"runtime"
 	"strings"
 	"time"
 )
 
+var Log = NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
+
 type Logger struct {
 	Logger *slog.Logger
+	// Group  string
+	// Level  slog.Level
 }
 
 // exitFunc is a package-level variable to handle exit in a testable way

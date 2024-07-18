@@ -5,17 +5,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"reverseproxy/internal/constants"
 	"reverseproxy/pkg/logger"
 	"time"
 )
 
-var log = logger.NewLogger(os.Stdout, "reverseproxy", slog.LevelDebug)
+var log = logger.NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
 
 // ReverseProxy is a struct that holds a Route and a Proxy. It is used to proxy HTTP requests to a target URL.
 type ReverseProxy struct {
@@ -46,7 +46,7 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 	transport.ResponseHeaderTimeout = 5 * time.Second // Timeout for reading the response headers
 
 	// // Check if protocol is HTTPS and set up TLS configuration
-	tlsConfig, tlsErr := getTlsTransport(target)
+	tlsConfig, tlsErr := target.GetTlsTransport()
 
 	transport.TLSClientConfig = tlsConfig
 
@@ -60,12 +60,12 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 			log.Debug("Request proxied to %s%s", req.URL.Host, req.URL.Path)
 		},
 		// Modify the reverse proxy to add the CORS headers:
-		ModifyResponse: func(resp *http.Response) error {
-			resp.Header.Set("Access-Control-Allow-Origin", "*")
-			resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			return nil
-		},
+		// ModifyResponse: func(resp *http.Response) error {
+		// 	resp.Header.Set("Access-Control-Allow-Origin", "*")
+		// 	resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		// 	resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		// 	return nil
+		// },
 		Transport: transport,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			if urlErr != nil {
@@ -95,13 +95,18 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// // Set the X-Forwarded-Host header on the incoming request
 	if p.Route.Protocol == "https" {
-		r.Header.Set("X-Forwarded-Proto", "https")
+		r.Header.Set(constants.ForwardedProtoHeader, "https")
 	} else {
-		r.Header.Set("X-Forwarded-Proto", "http")
+		r.Header.Set(constants.ForwardedProtoHeader, "http")
 	}
 
-	r.Header.Set("X-Forwarded-Host", r.Host)
-	r.Header.Set("X-Forwarded-For", r.RemoteAddr)
+	// Set the X-Forwarded-Host header on the incoming request
+	r.Header.Set(constants.ForwardedHostHeader, r.Host)
+	r.Header.Set(constants.ForwardedForHeader, r.RemoteAddr)
+	r.Header.Set(constants.ForwardedMethodHeader, r.Method)
+	r.Header.Set(constants.ForwardedPathHeader, r.URL.Path)
+	r.Header.Set(constants.ForwardedQueryHeader, r.URL.RawQuery)
+	r.Header.Set(constants.ForwardedPortHeader, r.URL.Port())
 
 	ctx := r.Context()
 	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
@@ -119,9 +124,9 @@ func (p *ReverseProxy) NewServeMux(ctx context.Context, route *Route, handler ht
 // HandleCORS is a middleware function that adds CORS headers to the response.
 func HandleCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set(constants.CORSAllowHeadersHeader, constants.CORSHeaders)
+		w.Header().Set(constants.CORSAllowMethodsHeader, constants.CORSMethods)
+		w.Header().Set(constants.CORSAllowOriginHeader, constants.CORSAllowOrigin)
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
