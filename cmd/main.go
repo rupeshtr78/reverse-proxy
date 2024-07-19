@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"reverseproxy/api"
+	"reverseproxy/api/heartbeat"
+	api "reverseproxy/api/proxyserver"
 	"reverseproxy/internal/constants"
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
 	"syscall"
-	"time"
 
 	"github.com/spf13/viper"
 )
@@ -20,7 +21,7 @@ var log = logger.NewLogger(os.Stdout, "main", constants.LoggingLevel)
 
 func main() {
 
-	configFile := constants.GetEnv("CONFIG_FILE_PATH", "config/metrics.yaml")
+	configFile := constants.GetEnv("CONFIG_FILE_PATH", "config/config.yaml")
 	// logLevel := constants.GetEnv("LOG_LEVEL", "info")
 
 	flag.StringVar(&configFile, "config", configFile, "config file path")
@@ -59,8 +60,32 @@ func main() {
 	routes := config.Routes
 	// add go routine for each route
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(100)*time.Millisecond)
+	hb := heartbeat.HeartBeat{
+		Enabled:           true,
+		Interval:          constants.HeartBeatInterval,
+		Timeout:           constants.HeartBeatTimeout,
+		RetriesBeforeFail: 3,
+		ServerAddrURL:     "localhost:8081",
+		ServerStatusPath:  "/heartbeat",
+		ServerStatus:      "Proxy Server Live",
+		ServerStatusURL:   "http://localhost:8081/heartbeat",
+	}
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	hbServer, err := heartbeat.RunHeartBeat(ctx, hb)
+	if err != nil {
+		log.Warn("Error starting heartbeat", err)
+	}
+
+	go func() {
+		err := hbServer.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Error("Failed to start heartbeat server: %v", err)
+		}
+	}()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -83,8 +108,13 @@ func main() {
 	select {
 	case sig := <-sigChan:
 		log.Infof("Received signal %v", nil, sig)
+		heartbeat.Shutdown(hbServer, ctx)
 	case err := <-errChan:
 		log.Error("Error in proxy server", err)
+		heartbeat.Shutdown(hbServer, ctx)
+	case <-ctx.Done():
+		heartbeat.Shutdown(hbServer, ctx)
+
 	}
 
 }

@@ -30,6 +30,8 @@ const (
 	CORSAllowOriginHeader  = "Access-Control-Allow-Origin"
 	CORSAllowMethodsHeader = "Access-Control-Allow-Methods"
 	CORSAllowHeadersHeader = "Access-Control-Allow-Headers"
+	HeartBeatInterval      = time.Second * 60
+	HeartBeatTimeout       = time.Second * 10
 )
 
 // HTTP Headers
