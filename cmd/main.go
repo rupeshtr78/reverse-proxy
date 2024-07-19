@@ -87,6 +87,11 @@ func main() {
 		}
 	}()
 
+	err = reverseproxy.StartMetricsServer(ctx, constants.PrometheusPort)
+	if err != nil {
+		log.Error("Failed to start metrics server: %v", err)
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	defer close(sigChan)

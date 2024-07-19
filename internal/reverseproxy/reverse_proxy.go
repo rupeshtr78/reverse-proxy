@@ -13,6 +13,9 @@ import (
 	"reverseproxy/internal/constants"
 	"reverseproxy/pkg/logger"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var log = logger.NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
@@ -108,6 +111,10 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set(constants.ForwardedQueryHeader, r.URL.RawQuery)
 	r.Header.Set(constants.ForwardedPortHeader, r.URL.Port())
 
+	// Prometheus metrics
+	constants.ProxiedRequestsTotal.Inc()
+	constants.RequestDuration.Observe(time.Since(time.Now()).Seconds())
+
 	ctx := r.Context()
 	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
 }
@@ -193,4 +200,42 @@ func getTargetURL(target Target) (*url.URL, error) {
 	}
 
 	return targetUrl, nil
+}
+
+func StartMetricsServer(ctx context.Context, metricsPort string) error {
+
+	err := prometheus.Register(constants.ProxiedRequestsTotal)
+	if err != nil {
+		log.Info("Prometheus metric already registered")
+	}
+	err = prometheus.Register(constants.RequestDuration)
+	if err != nil {
+		log.Info("Prometheus metric already registered")
+	}
+
+	// start a server that serves prometheus metrics on the configured port
+	http.Handle(constants.PrometheusPath, promhttp.Handler())
+
+	errChan := make(chan error, 1)
+
+	go func() {
+		log.Info("Starting metrics server on port: ", metricsPort)
+		err := http.ListenAndServe(":"+metricsPort, nil)
+		if err != nil {
+			errChan <- err
+			return
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Info("Shutting down metrics server")
+	default:
+		err := <-errChan
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

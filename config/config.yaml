@@ -1,19 +1,19 @@
 routes:
-  - name: "proxy-k8s"
-    listenHost: "0.0.0.0"
-    listenport: 6443
-    protocol: "https"
-    certFile: "config/keystore/server/k8s.crt"
-    keyFile: "config/keystore/server/k8s.key"
-    pattern: "/"
-    target:
-        name: "k8s-p920s"
-        protocol: "https"
-        host: "192.168.2.130"
-        port: 6443
-        certfile: "config/keystore/targets/k8s/k8s.crt"
-        keyfile: "config/keystore/targets/k8s/k8s.key"
-        cacert: "config/keystore/targets/k8s/ca.crt"
+  # - name: "proxy-k8s"
+  #   listenHost: "0.0.0.0"
+  #   listenport: 6443
+  #   protocol: "https"
+  #   certFile: "config/keystore/server/k8s.crt"
+  #   keyFile: "config/keystore/server/k8s.key"
+  #   pattern: "/"
+  #   target:
+  #       name: "k8s-p920s"
+  #       protocol: "https"
+  #       host: "192.168.2.130"
+  #       port: 6443
+  #       certfile: "config/keystore/targets/k8s/k8s.crt"
+  #       keyfile: "config/keystore/targets/k8s/k8s.key"
+  #       cacert: "config/keystore/targets/k8s/ca.crt"
   - name: "grafana"
     listenHost: "0.0.0.0"
     listenport: 6446
