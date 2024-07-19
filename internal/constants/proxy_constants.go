@@ -4,6 +4,9 @@ import (
 	"log/slog"
 	"os"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 var LoggingLevel = SetLogLevel(GetEnv("LOG_LEVEL", "info"))
@@ -32,6 +35,8 @@ const (
 	CORSAllowHeadersHeader = "Access-Control-Allow-Headers"
 	HeartBeatInterval      = time.Second * 60
 	HeartBeatTimeout       = time.Second * 10
+	PrometheusPath         = "/metrics"
+	PrometheusPort         = "8091"
 )
 
 // HTTP Headers
@@ -49,6 +54,23 @@ var (
 		"Access-Control-Allow-Credentials": "true",             // CORS Allow Credentials
 		"Access-Control-Max-Age":           "86400",            // CORS Max Age
 	}
+)
+
+// prom http metrics
+var (
+	ProxiedRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "reverseproxy",
+		Subsystem: "metrics",
+		Name:      "proxied_requests_total",
+		Help:      "Total number of requests proxied",
+	})
+	RequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "reverseproxy",
+		Subsystem: "metrics",
+		Name:      "request_duration_seconds",
+		Help:      "Duration of proxy requests",
+		Buckets:   prometheus.DefBuckets,
+	})
 )
 
 // SetLogLevel sets the logging level for the application.
