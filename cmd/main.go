@@ -13,6 +13,7 @@ import (
 	"reverseproxy/internal/reverseproxy"
 	"reverseproxy/pkg/logger"
 	"syscall"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -58,9 +59,26 @@ func main() {
 	}
 
 	routes := config.Routes
-	// add go routine for each route
 
-	hb := heartbeat.HeartBeat{
+	hb := newHeartBeat()
+	client := newHTTPClient(hb.Timeout)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	hbServer, err := heartbeat.RunHeartBeat(ctx, hb, client)
+	if err != nil {
+		log.Warn("Error starting heartbeat", err)
+	}
+
+	startServers(ctx, hbServer, routes)
+	handleSignals(ctx, hbServer)
+
+}
+
+func newHeartBeat() heartbeat.HeartBeat {
+	return heartbeat.HeartBeat{
 		Enabled:           true,
 		Interval:          constants.HeartBeatInterval,
 		Timeout:           constants.HeartBeatTimeout,
@@ -70,56 +88,54 @@ func main() {
 		ServerStatus:      "Proxy Server Live",
 		ServerStatusURL:   "http://localhost:8081/heartbeat",
 	}
+}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	hbServer, err := heartbeat.RunHeartBeat(ctx, hb)
-	if err != nil {
-		log.Warn("Error starting heartbeat", err)
+func newHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			MaxConnsPerHost: 1,
+		},
 	}
+}
 
+func startServers(ctx context.Context, hbServer *http.Server, routes []reverseproxy.Route) {
 	go func() {
-		err := hbServer.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			log.Error("Failed to start heartbeat server: %v", err)
+		if err := hbServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Failed to start heartbeat server", err)
 		}
 	}()
 
-	err = reverseproxy.StartMetricsServer(ctx, constants.PrometheusPort)
-	if err != nil {
-		log.Error("Failed to start metrics server: %v", err)
-	}
+	go func() {
+		if err := reverseproxy.StartMetricsServer(ctx, constants.PrometheusPort); err != nil {
+			log.Error("Failed to start metrics server", err)
+		}
+	}()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	defer close(sigChan)
-
-	// var wg sync.WaitGroup
-	// wg.Add(len(routes))
 	errChan := make(chan error, len(routes))
-	defer close(errChan)
-
 	for _, route := range routes {
 		go func(route reverseproxy.Route) {
-			err := api.ProxyServer(ctx, &route)
-			errChan <- err
-
+			errChan <- api.ProxyServer(ctx, &route)
 		}(route)
-
 	}
+
+	go func() {
+		for err := range errChan {
+			log.Error("Error in proxy server", err)
+		}
+	}()
+}
+
+func handleSignals(ctx context.Context, hbServer *http.Server) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
 	case sig := <-sigChan:
-		log.Infof("Received signal %v", nil, sig)
-		heartbeat.Shutdown(hbServer, ctx)
-	case err := <-errChan:
-		log.Error("Error in proxy server", err)
-		heartbeat.Shutdown(hbServer, ctx)
+		log.Info("Received signal %v", sig)
 	case <-ctx.Done():
-		heartbeat.Shutdown(hbServer, ctx)
-
+		log.Info("Context done")
 	}
 
+	heartbeat.Shutdown(hbServer, ctx)
 }

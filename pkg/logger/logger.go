@@ -9,10 +9,16 @@ import (
 	"reverseproxy/internal/constants"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
-var Log = NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
+var (
+	Log            = NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
+	exitFunc       = os.Exit
+	loggerInstance *Logger
+	once           sync.Once
+)
 
 type Logger struct {
 	Logger *slog.Logger
@@ -21,21 +27,28 @@ type Logger struct {
 }
 
 // exitFunc is a package-level variable to handle exit in a testable way
-var exitFunc = os.Exit
+// var exitFunc = os.Exit
 
 // NewLogger creates a new logger with the specified name and log level.
 func NewLogger(output io.Writer, name string, level slog.Level) *Logger {
-	handler, err := GetHandler(output, level)
-	if err != nil {
-		panic(err)
-	}
+	once.Do(func() {
+		handler, err := GetHandler(output, level)
+		if err != nil {
+			panic(err)
+		}
 
-	handler = handler.WithGroup(name)
-	logger := slog.New(handler)
+		handler = handler.WithGroup(name)
+		// logger := slog.New(handler)
 
-	l := &Logger{Logger: logger}
+		loggerInstance = &Logger{
+			Logger: slog.New(handler),
+		}
 
-	return l
+	})
+
+	// l := &Logger{Logger: logger}
+
+	return loggerInstance
 }
 
 // GetHandler returns a slog.Handler with the specified log level.

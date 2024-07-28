@@ -26,10 +26,23 @@ type ReverseProxy struct {
 	Proxy *httputil.ReverseProxy
 }
 
+type ReverseProxyFactory interface {
+	CreateReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error)
+}
+
+// ReverseProxyFactoryImpl is an implementation of the ReverseProxyFactory interface.
+type ReverseProxyFactoryImpl struct{}
+
 // NewReverseProxy creates a new ReverseProxy instance that can be used to proxy HTTP requests to a target URL.
+func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
+	factory := &ReverseProxyFactoryImpl{}
+	return factory.CreateReverseProxy(ctx, route)
+}
+
+// CreateReverseProxy creates a new ReverseProxy instance that can be used to proxy HTTP requests to a target URL.
 // The ReverseProxy is configured with the provided Route, which contains information about the target URL.
 // If there is an error parsing the target URL, an error is returned.
-func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
+func (f *ReverseProxyFactoryImpl) CreateReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 
 	target := route.Target
 	url, urlErr := getTargetURL(target)
@@ -144,6 +157,7 @@ func HandleCORS(next http.Handler) http.Handler {
 
 }
 
+// getTlsTransport returns a TLS configuration for the provided target. // TODO move this to the target struct
 func getTlsTransport(target Target) (*tls.Config, error) {
 	if target.Protocol != "https" {
 		return nil, nil
