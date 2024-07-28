@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var LoggingLevel = SetLogLevel(GetEnv("LOG_LEVEL", "info"))
+var LoggingLevel = SetLogLevel(GetEnv("LOG_LEVEL", "debug"))
 
 // Proxy Configurations
 const (

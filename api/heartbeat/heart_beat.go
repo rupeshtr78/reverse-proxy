@@ -27,7 +27,7 @@ type HeartBeat struct {
 }
 
 // RunHeartBeat runs the heartbeat server and returns a pointer to it
-func RunHeartBeat(ctx context.Context, hb HeartBeat) (*http.Server, error) {
+func RunHeartBeat(ctx context.Context, hb HeartBeat, client *http.Client) (*http.Server, error) {
 	if !hb.Enabled {
 		log.Info("Heartbeat is disabled")
 	}
@@ -47,7 +47,7 @@ func RunHeartBeat(ctx context.Context, hb HeartBeat) (*http.Server, error) {
 	// Start a separate goroutine to send periodic heartbeats using an HTTP client with configured timeouts and retries
 	go func() {
 		for {
-			err := checkHealthClient(ctx, hb)
+			err := CheckHealthClient(ctx, hb, client)
 			if err != nil {
 				log.Error("Failed to send heartbeat", err)
 			} else {
@@ -60,12 +60,10 @@ func RunHeartBeat(ctx context.Context, hb HeartBeat) (*http.Server, error) {
 	return server, nil
 }
 
-func checkHealthClient(ctx context.Context, hb HeartBeat) error {
-	client := &http.Client{
-		Timeout: hb.Timeout,
-		Transport: &http.Transport{
-			MaxConnsPerHost: 1,
-		},
+func CheckHealthClient(ctx context.Context, hb HeartBeat, client *http.Client) error {
+
+	if hb.ServerStatusURL == "" {
+		return fmt.Errorf("server status URL is empty")
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, hb.Timeout)
@@ -84,6 +82,10 @@ func checkHealthClient(ctx context.Context, hb HeartBeat) error {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
