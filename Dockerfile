@@ -52,7 +52,7 @@ COPY config/ config/
 
 # Install certificates if CA_CERT_PATH is provided and file exists
 RUN mkdir -p /usr/local/share/ca-certificates && \
-    cp ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
+    cp -r ${CA_CERT_PATH} /usr/local/share/ca-certificates/ && \
     update-ca-certificates
 
 # Set environment variables with default values
