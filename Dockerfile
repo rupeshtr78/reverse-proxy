@@ -47,7 +47,7 @@ RUN mkdir config \
 
 
 COPY config/ config/
-
+COPY certs/ certs/
 
 
 # Install certificates if CA_CERT_PATH is provided and file exists
@@ -56,10 +56,10 @@ RUN mkdir -p /usr/local/share/ca-certificates && \
     update-ca-certificates
 
 # Set environment variables with default values
-ENV CONFIG_FILE_PATH=${CONFIG_FILE}
-ENV LOG_LEVEL=info
-ENV LOG_FILE_PATH=logs/proxy.log
-ENV LOG_TO_FILE=false
+# ENV CONFIG_FILE_PATH=${CONFIG_FILE}
+# ENV LOG_LEVEL=info
+# ENV LOG_FILE_PATH=logs/proxy.log
+# ENV LOG_TO_FILE=false
 
 
 
