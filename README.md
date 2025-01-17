@@ -129,12 +129,14 @@ For multi-container orchestration, you can use Docker Compose.
 2. Build and run the services:
     ```sh
     docker compose up --build
-    # or
+
+    # or without .env file
+
     docker-compose up --build \
-    --build-arg TARGETOS=linux \
-    --build-arg TARGETARCH=amd64 \
-    --build-arg CA_CERT_PATH=/path/to/ca.crt \
-    --build-arg CONFIG_FILE=/path/to/config.yaml
+      --build-arg TARGETOS=linux \
+      --build-arg TARGETARCH=amd64 \
+      --build-arg CA_CERT_PATH=/path/to/ca.crt \
+      --build-arg CONFIG_FILE=/path/to/config.yaml
     ```
 
 This will build the Docker image and start the container as specified in your `docker-compose.yml` file. 
