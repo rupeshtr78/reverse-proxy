@@ -1,5 +1,6 @@
 services:
   proxyserver:
+    image: proxyserver:aarch64-v01
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,7 +14,7 @@ services:
       - "6445:6445"
       - "6446:6446"
     environment:
-      # CONFIG_FILE_PATH: "config/config.yaml"
+      CONFIG_FILE_PATH: "config/config.yaml"
       LOG_LEVEL: "info"
       LOG_FILE_PATH: "logs/proxy.log"
     volumes:
