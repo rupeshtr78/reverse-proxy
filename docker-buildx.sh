@@ -6,6 +6,6 @@
 docker buildx build \
     $(cat .env | sed 's/^/--build-arg /') \
     --platform linux/arm64 \
-    -t rupeshtr/proxyserver-arm64:v02 \
+    -t rupeshtr/proxyserver-arm64:v03 \
     --push \
     .

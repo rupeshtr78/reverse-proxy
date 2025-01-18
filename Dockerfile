@@ -30,7 +30,7 @@ ARG USER_NAME=proxyuser
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 # congig file path
-ARG CONFIG_FILE
+# ARG CONFIG_FILE
 # ca cert 
 ARG CA_CERT_PATH
 
@@ -46,7 +46,7 @@ RUN mkdir config \
     && mkdir logs
 
 
-COPY config/ config/
+# COPY config/ config/
 COPY certs/ certs/
 
 
