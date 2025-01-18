@@ -20,7 +20,7 @@ type Route struct {
 	Pattern    string `yaml:"pattern omitempty=false"`
 	CertFile   string `yaml:"certfile omitempty=false"`
 	KeyFile    string `yaml:"keyfile omitempty=false"`
-	Target     Target `yaml:"target omitempty=false"`
+	Target     Target `yaml:"target omitempty=false"` // @TODO list of targets
 }
 
 type Target struct {

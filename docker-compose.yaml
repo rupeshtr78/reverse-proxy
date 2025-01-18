@@ -1,14 +1,6 @@
 services:
   proxyserver:
-    image: proxyserver:aarch64-v01
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        TARGETOS: ${TARGETOS}
-        TARGETARCH: ${TARGETARCH}
-        CA_CERT_PATH: ${CA_CERT_PATH}
-        CONFIG_FILE: ${CONFIG_FILE}
+    image: proxyserver:aarch64-v02
     ports:
       - "6443:6443"
       - "6445:6445"
