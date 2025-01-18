@@ -22,7 +22,7 @@ var log = logger.NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
 
 // ReverseProxy is a struct that holds a Route and a Proxy. It is used to proxy HTTP requests to a target URL.
 type ReverseProxy struct {
-	Route *Route
+	Route *Route // change to Target
 	Proxy *httputil.ReverseProxy
 }
 
