@@ -1,6 +1,7 @@
 package constants
 
 import (
+	"log"
 	"log/slog"
 	"os"
 	"time"
@@ -89,6 +90,7 @@ func SetLogLevel(level string) slog.Level {
 		LoggingLevel = slog.LevelDebug
 	}
 
+	log.Printf("Setting log level to %s", LoggingLevel)
 	return LoggingLevel
 }
 

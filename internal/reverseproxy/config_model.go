@@ -13,24 +13,25 @@ type Config struct {
 	Routes []Route `yaml:"routes"`
 }
 type Route struct {
-	Name       string `yaml:"name omitempty=false"`
-	ListenHost string `yaml:"listenhost omitempty=false"`
-	ListenPort int    `yaml:"listenport omitempty=false"`
-	Protocol   string `yaml:"protocol omitempty=false"`
-	Pattern    string `yaml:"pattern omitempty=false"`
-	CertFile   string `yaml:"certfile omitempty=false"`
-	KeyFile    string `yaml:"keyfile omitempty=false"`
-	Target     Target `yaml:"target omitempty=false"` // @TODO list of targets
+	Name       string   `yaml:"name omitempty=false"`
+	ListenHost string   `yaml:"listenhost omitempty=false"`
+	ListenPort int      `yaml:"listenport omitempty=false"`
+	Protocol   string   `yaml:"protocol omitempty=false"`
+	Pattern    string   `yaml:"pattern omitempty=false"`
+	CertFile   string   `yaml:"certfile omitempty=false"`
+	KeyFile    string   `yaml:"keyfile omitempty=false"`
+	Target     []Target `yaml:"target omitempty=false"` // @TODO list of targets
 }
 
 type Target struct {
-	Name     string `yaml:"name omitempty=false"`
-	Protocol string `yaml:"protocol omitempty=false"`
-	Host     string `yaml:"host omitempty=false"`
-	Port     int    `yaml:"port omitempty=false"`
-	CertFile string `yaml:"certfile omitempty=false"`
-	KeyFile  string `yaml:"keyfile omitempty=false"`
-	CaCert   string `yaml:"cacert omitempty=false"`
+	Name       string `yaml:"name omitempty=false"`
+	PathPrefix string `yaml:"pathprefix omitempty=false"`
+	Protocol   string `yaml:"protocol omitempty=false"`
+	Host       string `yaml:"host omitempty=false"`
+	Port       int    `yaml:"port omitempty=false"`
+	CertFile   string `yaml:"certfile omitempty=false"`
+	KeyFile    string `yaml:"keyfile omitempty=false"`
+	CaCert     string `yaml:"cacert omitempty=false"`
 }
 
 func (target *Target) GetTlsTransport() (*tls.Config, error) {
@@ -102,12 +103,31 @@ func validateRoute(route Route) error {
 		return fmt.Errorf("invalid protocol for route %s", route.Name)
 	}
 
-	if route.Protocol == "https" {
-		if err := validateCertPath(route.Target.CertFile); err != nil {
-			return err
+	// if route.Protocol == "https" {
+	// 	if err := validateCertPath(route.Target.CertFile); err != nil {
+	// 		return err
+	// 	}
+	// 	if err := validateCertPath(route.Target.KeyFile); err != nil {
+	// 		return err
+	// 	}
+	// }
+
+	for _, target := range route.Target {
+		if target.Port <= 0 || target.Port > 65535 {
+			return fmt.Errorf("invalid port for target %s", target.Name)
 		}
-		if err := validateCertPath(route.Target.KeyFile); err != nil {
-			return err
+
+		if target.Protocol != "http" && target.Protocol != "https" {
+			return fmt.Errorf("invalid protocol for target %s", target.Name)
+		}
+
+		if target.Protocol == "https" {
+			if err := validateCertPath(target.CertFile); err != nil {
+				return err
+			}
+			if err := validateCertPath(target.KeyFile); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -22,8 +22,8 @@ var log = logger.NewLogger(os.Stdout, "reverseproxy", constants.LoggingLevel)
 
 // ReverseProxy is a struct that holds a Route and a Proxy. It is used to proxy HTTP requests to a target URL.
 type ReverseProxy struct {
-	Route *Route // change to Target
-	Proxy *httputil.ReverseProxy
+	Route *Route
+	Proxy map[string]*httputil.ReverseProxy
 }
 
 type ReverseProxyFactory interface {
@@ -44,65 +44,73 @@ func NewReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 // If there is an error parsing the target URL, an error is returned.
 func (f *ReverseProxyFactoryImpl) CreateReverseProxy(ctx context.Context, route *Route) (*ReverseProxy, error) {
 
-	target := route.Target
-	url, urlErr := getTargetURL(target)
+	proxies := make(map[string]*httputil.ReverseProxy)
 
-	transport := &http.Transport{
-		MaxIdleConns:          10,
-		ResponseHeaderTimeout: 30 * time.Microsecond,
-		IdleConnTimeout:       30 * time.Microsecond,
+	targets := route.Target
+	for _, target := range targets {
+		url, urlErr := getTargetURL(target)
+
+		transport := &http.Transport{
+			MaxIdleConns:          10,
+			ResponseHeaderTimeout: 30 * time.Microsecond,
+			IdleConnTimeout:       30 * time.Microsecond,
+		}
+
+		dialer := &net.Dialer{
+			Timeout:   5 * time.Second,  // Timeout for establishing connection
+			KeepAlive: 10 * time.Second, // Keep alive time
+		}
+
+		transport.DialContext = dialer.DialContext
+		transport.ResponseHeaderTimeout = 5 * time.Second // Timeout for reading the response headers
+
+		// // Check if protocol is HTTPS and set up TLS configuration
+		tlsConfig, tlsErr := target.GetTlsTransport()
+
+		transport.TLSClientConfig = tlsConfig
+
+		// Setup the reverse proxy
+		proxy := &httputil.ReverseProxy{
+			Director: func(req *http.Request) {
+				req = req.WithContext(ctx)
+				req.URL.Scheme = url.Scheme
+				req.URL.Host = url.Host
+				req.URL.Path = url.Path + req.URL.Path // adds proxy path plus request url path
+				log.Debug("Request proxied to %s%s", req.URL.Host, req.URL.Path)
+			},
+			// Modify the reverse proxy to add the CORS headers:
+			// ModifyResponse: func(resp *http.Response) error {
+			// 	resp.Header.Set("Access-Control-Allow-Origin", "*")
+			// 	resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			// 	resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			// 	return nil
+			// },
+			Transport: transport,
+			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+				if urlErr != nil {
+					log.Error("Error parsing target url", urlErr)
+					http.Error(w, "Error parsing target url", http.StatusBadGateway)
+				}
+				if tlsErr != nil {
+					log.Error("Error setting up TLS configuration", tlsErr)
+					http.Error(w, "Error setting up TLS configuration", http.StatusBadGateway)
+				}
+
+				log.Error("Error proxying request", err)
+				http.Error(w, fmt.Sprintf("Error Proxying request %v", http.StatusBadGateway), http.StatusBadGateway)
+			},
+		}
+
+		proxies[target.PathPrefix] = proxy
+		reverseProxy := &ReverseProxy{
+			Route: route,
+			Proxy: proxies,
+		}
+
+		return reverseProxy, nil
 	}
 
-	dialer := &net.Dialer{
-		Timeout:   5 * time.Second,  // Timeout for establishing connection
-		KeepAlive: 10 * time.Second, // Keep alive time
-	}
-
-	transport.DialContext = dialer.DialContext
-	transport.ResponseHeaderTimeout = 5 * time.Second // Timeout for reading the response headers
-
-	// // Check if protocol is HTTPS and set up TLS configuration
-	tlsConfig, tlsErr := target.GetTlsTransport()
-
-	transport.TLSClientConfig = tlsConfig
-
-	// Setup the reverse proxy
-	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req = req.WithContext(ctx)
-			req.URL.Scheme = url.Scheme
-			req.URL.Host = url.Host
-			req.URL.Path = url.Path + req.URL.Path // adds proxy path plus request url path
-			log.Debug("Request proxied to %s%s", req.URL.Host, req.URL.Path)
-		},
-		// Modify the reverse proxy to add the CORS headers:
-		// ModifyResponse: func(resp *http.Response) error {
-		// 	resp.Header.Set("Access-Control-Allow-Origin", "*")
-		// 	resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		// 	resp.Header.Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		// 	return nil
-		// },
-		Transport: transport,
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			if urlErr != nil {
-				log.Error("Error parsing target url", urlErr)
-				http.Error(w, "Error parsing target url", http.StatusBadGateway)
-			}
-			if tlsErr != nil {
-				log.Error("Error setting up TLS configuration", tlsErr)
-				http.Error(w, "Error setting up TLS configuration", http.StatusBadGateway)
-			}
-
-			log.Error("Error proxying request", err)
-			http.Error(w, fmt.Sprintf("Error Proxying request %v", http.StatusBadGateway), http.StatusBadGateway)
-		},
-	}
-	reverseProxy := &ReverseProxy{
-		Route: route,
-		Proxy: proxy,
-	}
-
-	return reverseProxy, nil
+	return nil, fmt.Errorf("no target found for route %s", route.Name)
 }
 
 // ServeHTTP is the HTTP handler for the ReverseProxy.
@@ -129,7 +137,16 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	constants.RequestDuration.Observe(time.Since(time.Now()).Seconds())
 
 	ctx := r.Context()
-	p.Proxy.ServeHTTP(w, r.WithContext(ctx))
+	// p.Proxy.ServeHTTP(w, r.WithContext(ctx))
+	for path, proxy := range p.Proxy {
+		// if first path matches the request path, proxy the request
+		log.Debug("Request path: %s", r.URL.Path)
+		if r.URL.Path == path {
+			proxy.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+	}
+	http.Error(w, "Not Found", http.StatusNotFound)
 }
 
 // NewServeMux creates a new HTTP request multiplexer (ServeMux) that will route incoming requests to the provided handler.

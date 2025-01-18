@@ -32,7 +32,7 @@ func TestProxyServer(t *testing.T) {
 		ListenHost: "localhost",
 		ListenPort: 8081,
 		Protocol:   "http",
-		Target:     target,
+		Target:     []reverseproxy.Target{target},
 	}
 
 	// Create a mock backend server to forward requests to.

@@ -57,14 +57,16 @@ func TestValidateConfig(t *testing.T) {
 						Pattern:    "/secure",
 						CertFile:   certFile,
 						KeyFile:    keyFile,
-						Target: Target{
-							Name:     "target1",
-							Protocol: "https",
-							Host:     "example.com",
-							Port:     443,
-							CertFile: certFile,
-							KeyFile:  keyFile,
-							CaCert:   certFile,
+						Target: []Target{
+							{
+								Name:     "target1",
+								Protocol: "https",
+								Host:     "example.com",
+								Port:     443,
+								CertFile: certFile,
+								KeyFile:  keyFile,
+								CaCert:   certFile,
+							},
 						},
 					},
 				},
@@ -113,11 +115,13 @@ func TestValidateConfig(t *testing.T) {
 						Pattern:    "/secure",
 						CertFile:   "nonexistent.pem", // Cert file doesn't exist
 						KeyFile:    "nonexistent.pem",
-						Target: Target{
-							Name:     "target1",
-							Protocol: "https",
-							Host:     "example.com",
-							Port:     443,
+						Target: []Target{
+							{
+								Name:     "target1",
+								Protocol: "https",
+								Host:     "example.com",
+								Port:     443,
+							},
 						},
 					},
 				},
