@@ -1,17 +1,26 @@
 routes:
-  - name: "proxy"
-    listenHost: "0.0.0.0"
-    listenport: 6446
-    protocol: "http"
-    pattern: "/"
-    target:
-        - name: "grafana"
-          pathprefix: "/grafana"
-          protocol: "http"
-          host: "10.0.0.213"
-          port: 3000
-        - name: "ollama"
-          pathprefix: "/ollama"
-          protocol: "http"
-          host: "10.0.0.213"
-          port: 11434
+  name: "proxy"
+  listenhost: "0.0.0.0"
+  listenport: 6446
+  protocol: "http"
+  pattern: "/"
+  certfile: ""  # Optional, can be omitted if not needed
+  keyfile: ""   # Optional, can be omitted if not needed
+  targets:
+    - name: "ollama"
+      pathprefix: "ollama"
+      protocol: "http"
+      host: "10.0.0.213"
+      port: 11434
+      certfile: ""  # Optional, can be omitted if not needed
+      keyfile: ""   # Optional, can be omitted if not needed
+      cacert: ""    # Optional, can be omitted if not needed
+    - name: "grafana"
+      pathprefix: "grafana"
+      protocol: "http"
+      host: "10.0.0.213"
+      port: 3000
+      certfile: ""  # Optional, can be omitted if not needed
+      keyfile: ""   # Optional, can be omitted if not needed
+      cacert: ""    # Optional, can be omitted if not needed
+

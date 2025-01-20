@@ -10,28 +10,29 @@ import (
 // Config represents the configuration for the reverse proxy.
 // The Routes field contains a list of Route configurations.
 type Config struct {
-	Routes []Route `yaml:"routes"`
+	Routes Route `yaml:"routes"`
 }
+
 type Route struct {
-	Name       string   `yaml:"name omitempty=false"`
-	ListenHost string   `yaml:"listenhost omitempty=false"`
-	ListenPort int      `yaml:"listenport omitempty=false"`
-	Protocol   string   `yaml:"protocol omitempty=false"`
-	Pattern    string   `yaml:"pattern omitempty=false"`
-	CertFile   string   `yaml:"certfile omitempty=false"`
-	KeyFile    string   `yaml:"keyfile omitempty=false"`
-	Target     []Target `yaml:"target omitempty=false"` // @TODO list of targets
+	Name       string   `yaml:"name,omitempty"`
+	ListenHost string   `yaml:"listenhost,omitempty"`
+	ListenPort int      `yaml:"listenport,omitempty"`
+	Protocol   string   `yaml:"protocol,omitempty"`
+	Pattern    string   `yaml:"pattern,omitempty"`
+	CertFile   string   `yaml:"certfile,omitempty"`
+	KeyFile    string   `yaml:"keyfile,omitempty"`
+	Targets    []Target `yaml:"targets,omitempty"`
 }
 
 type Target struct {
-	Name       string `yaml:"name omitempty=false"`
-	PathPrefix string `yaml:"pathprefix omitempty=false"`
-	Protocol   string `yaml:"protocol omitempty=false"`
-	Host       string `yaml:"host omitempty=false"`
-	Port       int    `yaml:"port omitempty=false"`
-	CertFile   string `yaml:"certfile omitempty=false"`
-	KeyFile    string `yaml:"keyfile omitempty=false"`
-	CaCert     string `yaml:"cacert omitempty=false"`
+	Name       string `yaml:"name,omitempty"`
+	PathPrefix string `yaml:"pathprefix,omitempty"`
+	Protocol   string `yaml:"protocol,omitempty"`
+	Host       string `yaml:"host,omitempty"`
+	Port       int    `yaml:"port,omitempty"`
+	CertFile   string `yaml:"certfile,omitempty"`
+	KeyFile    string `yaml:"keyfile,omitempty"`
+	CaCert     string `yaml:"cacert,omitempty"`
 }
 
 func (target *Target) GetTlsTransport() (*tls.Config, error) {
@@ -81,16 +82,37 @@ func (target *Target) GetTlsTransport() (*tls.Config, error) {
 
 // ValidateConfig validates the configuration for the reverse proxy.
 func (config *Config) ValidateConfig() error {
-	if len(config.Routes) == 0 {
-		return fmt.Errorf("no routes defined in the configuration")
+	if len(config.Routes.Targets) == 0 {
+		return fmt.Errorf("no routes defined")
 	}
-	for _, route := range config.Routes {
-		if err := validateRoute(route); err != nil {
-			return err
+
+	log.Debug("Number of Loaded targets ", len(config.Routes.Targets))
+	for _, target := range config.Routes.Targets {
+		log.Debug("Target Name: ", target.Name)
+		log.Debug("Target PathPrefix: ", target.PathPrefix)
+	}
+
+	// Check for unique pathprefix values
+	pathprefixes := make(map[string]bool)
+	for _, target := range config.Routes.Targets {
+		if target.PathPrefix == "" {
+			return fmt.Errorf("pathprefix is required for target %s", target.Name)
+		}
+		if pathprefixes[target.PathPrefix] {
+			return fmt.Errorf("duplicate pathprefix: %s", target.PathPrefix)
+		}
+		pathprefixes[target.PathPrefix] = true
+
+		// Validate host and port
+		if target.Host == "" {
+			return fmt.Errorf("host is required for target %s", target.Name)
+		}
+		if target.Port <= 0 {
+			return fmt.Errorf("invalid port for target %s", target.Name)
 		}
 	}
 
-	return nil
+	return validateRoute(config.Routes)
 }
 
 // validateRoute validates a single route configuration.
@@ -112,7 +134,7 @@ func validateRoute(route Route) error {
 	// 	}
 	// }
 
-	for _, target := range route.Target {
+	for _, target := range route.Targets {
 		if target.Port <= 0 || target.Port > 65535 {
 			return fmt.Errorf("invalid port for target %s", target.Name)
 		}

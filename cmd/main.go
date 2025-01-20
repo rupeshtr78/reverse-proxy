@@ -99,7 +99,7 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 	}
 }
 
-func startServers(ctx context.Context, hbServer *http.Server, routes []reverseproxy.Route) {
+func startServers(ctx context.Context, hbServer *http.Server, route reverseproxy.Route) {
 	go func() {
 		if err := hbServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("Failed to start heartbeat server", err)
@@ -112,12 +112,11 @@ func startServers(ctx context.Context, hbServer *http.Server, routes []reversepr
 		}
 	}()
 
-	errChan := make(chan error, len(routes))
-	for _, route := range routes {
-		go func(route reverseproxy.Route) {
-			errChan <- api.ProxyServer(ctx, &route)
-		}(route)
-	}
+	errChan := make(chan error, len(route.Targets))
+
+	go func(route reverseproxy.Route) {
+		errChan <- api.ProxyServer(ctx, &route)
+	}(route)
 
 	go func() {
 		for err := range errChan {
